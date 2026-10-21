@@ -1,8 +1,10 @@
 import React, { useMemo, useState } from "react";
+import AIChatBot from "./components/AIChatBot";
 
-const heroImage = "https://images.unsplash.com/photo-1578357078586-491adf1aa5c7?auto=format&fit=crop&w=1200&q=80";
+const heroImage = "https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=1200&q=80";
+const CONTACT_WA = "6282143637980";
 
-const prices = [
+const initialPrices = [
   ["Botol plastik", "Kotor", "kg", 1000],
   ["Botol plastik", "Bersih", "kg", 2000],
   ["Gelas plastik", "Kotor", "kg", 1000],
@@ -26,42 +28,72 @@ const prices = [
   ["Minyak jelantah", "Kategori umum", "kg", 3000]
 ];
 
-const products = [
-  ["Sabun Minyak Jelantah", "Rp 5.000 / pcs", "Sabun pembersih noda minyak dan cucian dari minyak jelantah murni.", "Tersedia", "https://images.unsplash.com/photo-1607006314644-8f4705353066?auto=format&fit=crop&w=600&q=80"],
-  ["Cairan Multi-Manfaat Eco-Enzyme (600 ml)", "Rp 10.000 / botol", "Fermentasi alami kulit buah dan sisa sayur organik multifungsi.", "Tersedia", "https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?auto=format&fit=crop&w=600&q=80"],
-  ["Pupuk Kompos Organik (4 Kg)", "Rp 10.000 / paket", "Kompos subur dari sisa sayur dan dedaunan warga permukiman.", "Tersedia", "https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=600&q=80"],
-  ["Tas Rajut Tali Rafia MBG 'SEDAJA'", "Rp 100.000 - Rp 150.000", "Brand tas rajut kuat dari rafia bekas tali ompreng MBG.", "Sesuai Pesanan", "https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=600&q=80"],
-  ["Bunga Hias Tas Kresek Bekas", "Rp 5.000 / kuntum", "Hiasan bunga cantik warna-warni dari daur ulang kresek.", "Tersedia", "https://images.unsplash.com/photo-1526047932273-341f2a7631f9?auto=format&fit=crop&w=600&q=80"]
+const initialProducts = [
+  [
+    "Sabun Minyak Jelantah",
+    "Rp 5.000 / pcs",
+    "Sabun pembersih noda minyak dan cucian dari minyak jelantah murni.",
+    "Tersedia",
+    "https://images.unsplash.com/photo-1600857544200-b2f666a9a2ec?auto=format&fit=crop&w=600&q=80"
+  ],
+  [
+    "Cairan Multi-Manfaat Eco-Enzyme (600 ml)",
+    "Rp 10.000 / botol",
+    "Fermentasi alami kulit buah dan sisa sayur organik multifungsi.",
+    "Tersedia",
+    "https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?auto=format&fit=crop&w=600&q=80"
+  ],
+  [
+    "Pupuk Kompos Organik (4 Kg)",
+    "Rp 10.000 / paket",
+    "Kompos subur dari sisa sayur dan dedaunan warga permukiman.",
+    "Tersedia",
+    "https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=600&q=80"
+  ],
+  [
+    "Tas Rajut Tali Rafia MBG 'SEDAJA'",
+    "Rp 100.000 - Rp 150.000",
+    "Brand tas rajut kuat dari rafia bekas tali ompreng MBG.",
+    "Sesuai Pesanan",
+    "https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=600&q=80"
+  ],
+  [
+    "Bunga Hias Tas Kresek Bekas",
+    "Rp 5.000 / kuntum",
+    "Hiasan bunga cantik warna-warni dari daur ulang kresek.",
+    "Tersedia",
+    "https://images.unsplash.com/photo-1526047932273-341f2a7631f9?auto=format&fit=crop&w=600&q=80"
+  ]
+];
+
+const initialDepositHistory = [
+  { date: "14 Okt 2026", name: "Ibu Siti Aminah", item: "Botol Plastik Bersih", weight: "4 kg", nominal: 8000 },
+  { date: "02 Okt 2026", name: "Ibu Siti Aminah", item: "Minyak Jelantah", weight: "3 kg", nominal: 9000 }
 ];
 
 const rupiah = (n) => "Rp " + n.toLocaleString("id-ID");
 
 function Icon({ name, size = 20 }) {
   const paths = {
-    leaf: <path d="M11 20A7 7 0 0 1 4 13C4 8.5 7.5 4 12 3c4.5 0 8 4.5 8 10a7 7 0 0 1-7 7Zm0 0v-8" />,
     arrow: <path d="M5 12h14m-7-7 7 7-7 7" />,
-    users: <><circle cx="9" cy="7" r="4" /><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /></>,
-    scale: <path d="m16 16 3-8 3 8a3 3 0 0 1-6 0ZM2 16l3-8 3 8a3 3 0 0 1-6 0ZM7 21h10M12 3v18" />,
-    wallet: <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" />,
-    clock: <><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></>,
-    plus: <path d="M12 5v14M5 12h14" />,
-    search: <><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></>,
-    box: <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />,
-    report: <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />,
     check: <path d="M20 6 9 17l-5-5" />,
-    truck: <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2m10 0h2m-4 0h4a2 2 0 0 0 2-2v-5a2 2 0 0 0-.58-1.41L18 8.41A2 2 0 0 0 16.59 8H14m0 10a2 2 0 1 0 4 0 2 2 0 0 0-4 0Zm-8 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0Z" />
+    user: <><circle cx="12" cy="7" r="4" /><path d="M5 21v-2a7 7 0 0 1 14 0v2" /></>,
+    search: <><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></>,
+    edit: <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />,
+    trash: <><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></>,
+    plus: <path d="M12 5v14M5 12h14" />
   };
 
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      {paths[name] || paths.leaf}
+      {paths[name] || null}
     </svg>
   );
 }
 
-function Button({ children, onClick, variant = "primary", className = "", disabled = false }) {
+function Button({ children, onClick, variant = "primary", className = "", disabled = false, type = "button", style = {} }) {
   return (
-    <button disabled={disabled} onClick={onClick} className={`btn btn-${variant} ${className}`}>
+    <button type={type} disabled={disabled} onClick={onClick} style={style} className={`btn btn-${variant} ${className}`}>
       {children}
     </button>
   );
@@ -69,19 +101,31 @@ function Button({ children, onClick, variant = "primary", className = "", disabl
 
 function Brand() {
   return (
-    <div className="brand">
-      <span className="brand-mark">
-        <Icon name="leaf" size={22} />
-      </span>
+    <div className="brand" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+      <img
+        src="/logoclean.png"
+        alt="Logo ECO-CAHAYA"
+        style={{
+          width: "42px",
+          height: "42px",
+          objectFit: "contain",
+          background: "transparent"
+        }}
+        onError={(e) => {
+          e.target.src = "/logoclean.png";
+        }}
+      />
       <span>
-        <b>Bank Sampah</b>
-        <small>Cahaya Kerja</small>
+        <b style={{ fontFamily: "Marcellus, serif", fontSize: "18px", color: "var(--forest)" }}>ECO-CAHAYA</b>
+        <small style={{ display: "block", fontSize: "11px", color: "var(--muted)", textTransform: "uppercase" }}>
+          Bank Sampah Cahaya Kerja
+        </small>
       </span>
     </div>
   );
 }
 
-function Header({ go }) {
+function Header({ go, currentUser, logout }) {
   return (
     <header className="header">
       <Brand />
@@ -92,31 +136,133 @@ function Header({ go }) {
         <button onClick={() => go("resident")}>Portal Warga</button>
         <button onClick={() => go("admin")}>Admin</button>
       </nav>
-      <Button variant="secondary" onClick={() => go("deposit")}>
-        Setor Sampah
-      </Button>
+      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+        {currentUser ? (
+          <button
+            onClick={logout}
+            style={{
+              background: "#f0f4f1",
+              border: "1px solid var(--line)",
+              padding: "8px 14px",
+              borderRadius: "999px",
+              fontSize: "12px",
+              fontWeight: "600",
+              color: "var(--forest)",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px"
+            }}
+            title="Klik untuk keluar / ganti akun"
+          >
+            <Icon name="user" size={14} />
+            <span>{currentUser.name} ({currentUser.role === "admin" ? "Pengurus" : "Warga"})</span>
+          </button>
+        ) : null}
+        <Button variant="secondary" onClick={() => go("deposit")}>
+          Setor Sampah
+        </Button>
+      </div>
     </header>
   );
 }
 
-function Home({ go }) {
+function LoginPage({ go, targetPage, onLoginSuccess }) {
+  const isResidentPortal = targetPage === "resident";
+  const fixedRole = isResidentPortal ? "warga" : "admin";
+  const [name, setName] = useState("");
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+
+    onLoginSuccess({
+      name: name.trim(),
+      role: fixedRole
+    });
+    go(targetPage);
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+      <header className="header">
+        <Brand />
+        <Button variant="ghost" onClick={() => go("home")}>← Kembali ke Beranda</Button>
+      </header>
+
+      <div style={{ maxWidth: "440px", margin: "40px auto", padding: "0 20px", width: "100%" }}>
+        <div className="form-panel" style={{ textAlign: "center", padding: "36px 28px" }}>
+          <div style={{ width: "54px", height: "54px", borderRadius: "50%", background: "#eef6f0", color: "var(--forest)", display: "grid", placeItems: "center", margin: "0 auto 16px" }}>
+            <Icon name="user" size={26} />
+          </div>
+
+          <h2 style={{ fontSize: "24px", color: "var(--forest)", marginBottom: "6px" }}>
+            {isResidentPortal ? "Masuk Portal Warga" : "Masuk Area Pengurus"}
+          </h2>
+          <p style={{ color: "var(--muted)", fontSize: "13px", marginBottom: "24px" }}>
+            {isResidentPortal
+              ? "Masukkan nama Anda untuk melihat buku tabungan dan saldo sampah."
+              : "Masukkan nama petugas pengurus untuk memulai pencatatan dan pengelolaan."}
+          </p>
+
+          <form onSubmit={handleLogin} style={{ textAlign: "left" }}>
+            <div style={{ marginBottom: "16px" }}>
+              <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "6px", color: "var(--forest)" }}>
+                Akses Sebagai
+              </label>
+              <div style={{
+                padding: "12px 14px",
+                background: "#f4f6f4",
+                border: "1px solid var(--line)",
+                borderRadius: "10px",
+                fontSize: "14px",
+                fontWeight: "600",
+                color: "var(--forest)"
+              }}>
+                {isResidentPortal ? "Warga / Nasabah Penabung" : "Pengurus / Admin Bank Sampah"}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: "24px" }}>
+              <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "6px", color: "var(--forest)" }}>
+                {isResidentPortal ? "Nama Lengkap Warga" : "Nama Petugas Pengurus"}
+              </label>
+              <input
+                type="text"
+                placeholder={isResidentPortal ? "Contoh: Ibu Siti Aminah" : "Contoh: Khalifatul"}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                style={{ width: "100%", padding: "12px", borderRadius: "10px", border: "1px solid var(--line)" }}
+              />
+            </div>
+
+            <Button type="submit" variant="primary" style={{ width: "100%", padding: "14px" }}>
+              Masuk Sekarang
+            </Button>
+          </form>
+        </div>
+      </div>
+
+      <Footer />
+    </div>
+  );
+}
+
+function Home({ go, currentUser, logout, products }) {
   const handleWA = (name, price) => {
     const text = encodeURIComponent(
       `Halo Ibu Pengurus Bank Sampah Cahaya Kerja Situbondo, saya tertarik memesan produk: *${name}* (${price}). Mohon informasi stok dan perkiraan ongkos kirim ke alamat saya. Terima kasih!`
     );
-    window.open(`https://wa.me/6281234567890?text=${text}`, "_blank");
+    window.open(`https://wa.me/${CONTACT_WA}?text=${text}`, "_blank");
   };
 
   return (
     <div>
-      <Header go={go} />
+      <Header go={go} currentUser={currentUser} logout={logout} />
       <main>
-        {/* Hero Section */}
         <section className="hero">
           <div className="hero-copy">
-            <span className="kicker">
-              <Icon name="leaf" size={16} /> Dari warga, untuk lingkungan
-            </span>
+            <span className="kicker">Dari warga, untuk lingkungan</span>
             <h1>
               Pilah sampah hari ini, <br />
               <em>tumbuhkan nilai untuk esok.</em>
@@ -132,20 +278,22 @@ function Home({ go }) {
             </div>
           </div>
           <div className="hero-visual">
-            <img src={heroImage} alt="Kegiatan pemilahan sampah" />
+            <img
+              src={heroImage}
+              alt="Kegiatan pemilahan sampah"
+              onError={(e) => {
+                e.target.src = "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=1200&q=80";
+              }}
+            />
             <div className="floating-card">
-              <span className="round-icon">
-                <Icon name="scale" />
-              </span>
               <div>
-                <b style={{ display: "block", fontSize: "14px" }}>50 - 100 Kg</b>
+                <b style={{ display: "block", fontSize: "16px", color: "var(--forest)" }}>50 – 100 Kg</b>
                 <small style={{ color: "var(--muted)", fontSize: "12px" }}>Terkumpul setiap bulan</small>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Banner Promosi Nasional: Dari Ujung Barat ke Timur Indonesia */}
         <section style={{ maxWidth: "1300px", margin: "0 auto 30px", padding: "0 32px" }}>
           <div style={{
             background: "linear-gradient(135deg, #153f32 0%, #246348 100%)",
@@ -159,9 +307,7 @@ function Home({ go }) {
           }}>
             <div>
               <span style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "8px",
+                display: "inline-block",
                 background: "rgba(255,255,255,0.15)",
                 padding: "6px 14px",
                 borderRadius: "999px",
@@ -169,7 +315,7 @@ function Home({ go }) {
                 fontWeight: "600",
                 marginBottom: "14px"
               }}>
-                <Icon name="truck" size={16} /> Pengiriman ke Seluruh Nusantara
+                Pengiriman ke Seluruh Nusantara
               </span>
               <h2 style={{ fontSize: "28px", margin: "0 0 10px", color: "white" }}>
                 Karya Daur Ulang Ibu-Ibu Situbondo Siap Menembus Seluruh Indonesia
@@ -180,24 +326,29 @@ function Home({ go }) {
             </div>
             <div style={{ textAlign: "right" }}>
               <Button variant="secondary" onClick={() => go("products")}>
-                Buka Etalase Nasional <Icon name="arrow" size={16} />
+                Buka Etalase <Icon name="arrow" size={16} />
               </Button>
             </div>
           </div>
         </section>
 
-        {/* Etalase Produk Langsung di Beranda */}
         <section className="section" style={{ paddingTop: "40px" }}>
           <div className="section-head">
             <span className="kicker">Karya Olahan Daur Ulang</span>
             <h2>Produk Unggulan Bank Sampah</h2>
-            <p>Dibuat teliti oleh emak-emak pengurus dan warga nasabah Bank Sampah Cahaya Kerja.</p>
+            <p>Dibuat teliti oleh pengurus dan warga nasabah Bank Sampah Cahaya Kerja.</p>
           </div>
           <div className="products-grid">
             {products.slice(0, 3).map((item, idx) => (
               <div key={idx} className="product-card">
                 <div className="img-box">
-                  <img src={item[4]} alt={item[0]} />
+                  <img
+                    src={item[4]}
+                    alt={item[0]}
+                    onError={(e) => {
+                      e.target.src = "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=600&q=80";
+                    }}
+                  />
                 </div>
                 <div className="content">
                   <div>
@@ -217,12 +368,11 @@ function Home({ go }) {
           </div>
           <div style={{ textAlign: "center", marginTop: "36px" }}>
             <Button variant="secondary" onClick={() => go("products")}>
-              Lihat Semua 5 Produk Kreatif Lainnya
+              Lihat Semua Produk Kreatif Lainnya
             </Button>
           </div>
         </section>
 
-        {/* 4 Langkah Menjadi Bernilai */}
         <section className="section" style={{ background: "white" }}>
           <div className="section-head">
             <span className="kicker">Mulai dari Rumah</span>
@@ -258,20 +408,69 @@ function Home({ go }) {
   );
 }
 
-function Prices({ go }) {
+function PriceTableView({ prices, setPrices, isAdmin = false }) {
   const [q, setQ] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editIndex, setEditIndex] = useState(null);
+
+  const [name, setName] = useState("");
+  const [condition, setCondition] = useState("");
+  const [unit, setUnit] = useState("kg");
+  const [price, setPrice] = useState("");
+
   const filtered = prices.filter((p) => p[0].toLowerCase().includes(q.toLowerCase()) || p[1].toLowerCase().includes(q.toLowerCase()));
 
+  const handleOpenAdd = () => {
+    setEditIndex(null);
+    setName("");
+    setCondition("Bersih");
+    setUnit("kg");
+    setPrice("");
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (originalIndex) => {
+    const item = prices[originalIndex];
+    setEditIndex(originalIndex);
+    setName(item[0]);
+    setCondition(item[1]);
+    setUnit(item[2]);
+    setPrice(item[3]);
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = (originalIndex) => {
+    if (window.confirm(`Yakin ingin menghapus ${prices[originalIndex][0]}?`)) {
+      const updated = [...prices];
+      updated.splice(originalIndex, 1);
+      setPrices(updated);
+    }
+  };
+
+  const handleSave = (e) => {
+    e.preventDefault();
+    const newItem = [name.trim(), condition.trim(), unit.trim(), parseFloat(price) || 0];
+
+    if (editIndex !== null) {
+      const updated = [...prices];
+      updated[editIndex] = newItem;
+      setPrices(updated);
+    } else {
+      setPrices([newItem, ...prices]);
+    }
+    setIsModalOpen(false);
+  };
+
   return (
-    <div>
-      <Header go={go} />
-      <div className="section">
-        <div className="section-head">
-          <span className="kicker">Daftar Harga Transparan</span>
-          <h2>Katalog Harga Sampah</h2>
-          <p>Harga menyesuaikan ketetapan pengepul resmi.</p>
-        </div>
-        <div className="form-panel" style={{ maxWidth: "500px", margin: "0 auto 30px" }}>
+    <>
+      <div className="section-head" style={{ marginBottom: "30px" }}>
+        <span className="kicker">Daftar Harga Transparan</span>
+        <h2>Katalog Harga Sampah</h2>
+        <p>Harga menyesuaikan ketetapan pengepul resmi.</p>
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px", marginBottom: "24px" }}>
+        <div className="form-panel" style={{ margin: 0, padding: "12px 18px", flex: "1 1 300px" }}>
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
             <Icon name="search" />
             <input
@@ -279,94 +478,466 @@ function Prices({ go }) {
               placeholder="Cari jenis sampah (misal: botol, kardus)..."
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              style={{ width: "100%", border: 0, outline: "none" }}
+              style={{ width: "100%", border: 0, outline: "none", fontSize: "14px" }}
             />
           </div>
         </div>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Jenis Sampah</th>
-                <th>Kondisi / Keterangan</th>
-                <th>Satuan</th>
-                <th>Harga Beli</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((item, idx) => (
+
+        {isAdmin && (
+          <Button variant="primary" onClick={handleOpenAdd} style={{ padding: "12px 20px" }}>
+            <Icon name="plus" size={16} /> Tambah Jenis Sampah
+          </Button>
+        )}
+      </div>
+
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Jenis Sampah</th>
+              <th>Kondisi / Keterangan</th>
+              <th>Satuan</th>
+              <th>Harga Beli</th>
+              {isAdmin && <th style={{ textAlign: "right" }}>Aksi</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((item, idx) => {
+              const originalIndex = prices.findIndex((p) => p === item);
+              return (
                 <tr key={idx}>
                   <td><b>{item[0]}</b></td>
                   <td>{item[1]}</td>
                   <td>{item[2]}</td>
                   <td><b style={{ color: "var(--green)" }}>{rupiah(item[3])}</b></td>
+                  {isAdmin && (
+                    <td style={{ textAlign: "right" }}>
+                      <div style={{ display: "inline-flex", gap: "8px" }}>
+                        <button
+                          onClick={() => handleOpenEdit(originalIndex)}
+                          style={{
+                            padding: "6px 12px",
+                            borderRadius: "8px",
+                            border: "1px solid var(--line)",
+                            background: "white",
+                            color: "var(--forest)",
+                            fontSize: "12px",
+                            fontWeight: "600",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px"
+                          }}
+                        >
+                          <Icon name="edit" size={14} /> Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(originalIndex)}
+                          style={{
+                            padding: "6px 12px",
+                            borderRadius: "8px",
+                            border: "1px solid #fed7d7",
+                            background: "#fff5f5",
+                            color: "#c53030",
+                            fontSize: "12px",
+                            fontWeight: "600",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px"
+                          }}
+                        >
+                          <Icon name="trash" size={14} /> Hapus
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
-      <Footer />
-    </div>
+
+      {isModalOpen && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.5)",
+          display: "grid",
+          placeItems: "center",
+          zIndex: 10000,
+          padding: "20px"
+        }}>
+          <div className="form-panel" style={{ maxWidth: "480px", width: "100%", padding: "30px", position: "relative" }}>
+            <h3 style={{ fontSize: "20px", color: "var(--forest)", marginBottom: "16px" }}>
+              {editIndex !== null ? "Edit Jenis Sampah" : "Tambah Jenis Sampah Baru"}
+            </h3>
+            <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+              <div>
+                <label style={{ fontSize: "12px", fontWeight: "600", display: "block", marginBottom: "4px", color: "var(--muted)" }}>
+                  Nama Jenis Sampah
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Contoh: Botol Plastik"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid var(--line)" }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: "12px", fontWeight: "600", display: "block", marginBottom: "4px", color: "var(--muted)" }}>
+                  Kondisi / Keterangan
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Contoh: Bersih / Kotor / KW 1"
+                  value={condition}
+                  onChange={(e) => setCondition(e.target.value)}
+                  style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid var(--line)" }}
+                />
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                <div>
+                  <label style={{ fontSize: "12px", fontWeight: "600", display: "block", marginBottom: "4px", color: "var(--muted)" }}>
+                    Satuan
+                  </label>
+                  <select
+                    value={unit}
+                    onChange={(e) => setUnit(e.target.value)}
+                    style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid var(--line)", background: "white" }}
+                  >
+                    <option value="kg">kg (Kilogram)</option>
+                    <option value="biji">biji (Per Buah / Satuan)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: "12px", fontWeight: "600", display: "block", marginBottom: "4px", color: "var(--muted)" }}>
+                    Harga Beli (Rp)
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    placeholder="Contoh: 2500"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid var(--line)" }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "16px" }}>
+                <Button variant="secondary" onClick={() => setIsModalOpen(false)}>Batal</Button>
+                <Button type="submit" variant="primary">Simpan Data</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
-function Products({ go }) {
+function ProductGridView({ products, setProducts, isAdmin = false }) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editIndex, setEditIndex] = useState(null);
+
+  const [title, setTitle] = useState("");
+  const [priceTag, setPriceTag] = useState("");
+  const [desc, setDesc] = useState("");
+  const [status, setStatus] = useState("Tersedia");
+  const [image, setImage] = useState("");
+
   const handleWA = (name, price) => {
     const text = encodeURIComponent(`Halo Bank Sampah Cahaya Kerja Situbondo, saya tertarik memesan produk kreatif: *${name}* (${price}). Mohon info ongkir dan ketersediaan stoknya.`);
-    window.open(`https://wa.me/6281234567890?text=${text}`, "_blank");
+    window.open(`https://wa.me/${CONTACT_WA}?text=${text}`, "_blank");
+  };
+
+  const handleOpenAdd = () => {
+    setEditIndex(null);
+    setTitle("");
+    setPriceTag("Rp 10.000 / pcs");
+    setDesc("");
+    setStatus("Tersedia");
+    setImage("https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=600&q=80");
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (index) => {
+    const item = products[index];
+    setEditIndex(index);
+    setTitle(item[0]);
+    setPriceTag(item[1]);
+    setDesc(item[2]);
+    setStatus(item[3]);
+    setImage(item[4]);
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = (index) => {
+    if (window.confirm(`Hapus produk "${products[index][0]}"?`)) {
+      const updated = [...products];
+      updated.splice(index, 1);
+      setProducts(updated);
+    }
+  };
+
+  const handleSave = (e) => {
+    e.preventDefault();
+    const newItem = [title.trim(), priceTag.trim(), desc.trim(), status.trim(), image.trim()];
+
+    if (editIndex !== null) {
+      const updated = [...products];
+      updated[editIndex] = newItem;
+      setProducts(updated);
+    } else {
+      setProducts([newItem, ...products]);
+    }
+    setIsModalOpen(false);
   };
 
   return (
-    <div>
-      <Header go={go} />
-      <div className="section">
-        <div className="section-head">
-          <span className="kicker">Galeri Nasional Produk Kreatif</span>
-          <h2>Karya Olahan Daur Ulang Situbondo</h2>
-          <p>Dapat dikirim dari Sabang sampai Merauke langsung ke alamat Anda.</p>
+    <>
+      <div className="section-head" style={{ marginBottom: "24px" }}>
+        <span className="kicker">Galeri Nasional Produk Kreatif</span>
+        <h2>Karya Olahan Daur Ulang Situbondo</h2>
+        <p>Dapat dikirim dari Sabang sampai Merauke langsung ke alamat Anda.</p>
+      </div>
+
+      {isAdmin && (
+        <div style={{ textAlign: "right", marginBottom: "24px" }}>
+          <Button variant="primary" onClick={handleOpenAdd}>
+            <Icon name="plus" size={16} /> Tambah Produk Baru
+          </Button>
         </div>
-        <div className="products-grid">
-          {products.map((item, idx) => (
-            <div key={idx} className="product-card">
-              <div className="img-box">
-                <img src={item[4]} alt={item[0]} />
+      )}
+
+      <div className="products-grid">
+        {products.map((item, idx) => (
+          <div key={idx} className="product-card">
+            <div className="img-box">
+              <img
+                src={item[4]}
+                alt={item[0]}
+                onError={(e) => {
+                  e.target.src = "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=600&q=80";
+                }}
+              />
+            </div>
+            <div className="content">
+              <div>
+                <span className="kicker" style={{ fontSize: "10px" }}>{item[3]}</span>
+                <h3>{item[0]}</h3>
+                <p>{item[2]}</p>
               </div>
-              <div className="content">
-                <div>
-                  <span className="kicker" style={{ fontSize: "10px" }}>{item[3]}</span>
-                  <h3>{item[0]}</h3>
-                  <p>{item[2]}</p>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--line)", paddingTop: "14px" }}>
+
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--line)", paddingTop: "14px", marginBottom: isAdmin ? "10px" : "0" }}>
                   <span className="price">{item[1]}</span>
-                  <Button variant="primary" onClick={() => handleWA(item[0], item[1])}>
-                    Pesan via WA
-                  </Button>
+                  {!isAdmin && (
+                    <Button variant="primary" onClick={() => handleWA(item[0], item[1])}>
+                      Pesan via WA
+                    </Button>
+                  )}
                 </div>
+
+                {isAdmin && (
+                  <div style={{ display: "flex", gap: "8px", borderTop: "1px solid var(--line)", paddingTop: "10px", justifyContent: "flex-end" }}>
+                    <button
+                      onClick={() => handleOpenEdit(idx)}
+                      style={{
+                        padding: "6px 14px",
+                        borderRadius: "8px",
+                        border: "1px solid var(--line)",
+                        background: "white",
+                        color: "var(--forest)",
+                        fontSize: "12px",
+                        fontWeight: "600",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px"
+                      }}
+                    >
+                      <Icon name="edit" size={14} /> Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(idx)}
+                      style={{
+                        padding: "6px 14px",
+                        borderRadius: "8px",
+                        border: "1px solid #fed7d7",
+                        background: "#fff5f5",
+                        color: "#c53030",
+                        fontSize: "12px",
+                        fontWeight: "600",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px"
+                      }}
+                    >
+                      <Icon name="trash" size={14} /> Hapus
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
-          ))}
+          </div>
+        ))}
+      </div>
+
+      {isModalOpen && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.5)",
+          display: "grid",
+          placeItems: "center",
+          zIndex: 10000,
+          padding: "20px"
+        }}>
+          <div className="form-panel" style={{ maxWidth: "520px", width: "100%", padding: "30px", position: "relative" }}>
+            <h3 style={{ fontSize: "20px", color: "var(--forest)", marginBottom: "16px" }}>
+              {editIndex !== null ? "Edit Produk Kriya" : "Tambah Produk Kriya Baru"}
+            </h3>
+            <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+              <div>
+                <label style={{ fontSize: "12px", fontWeight: "600", display: "block", marginBottom: "4px", color: "var(--muted)" }}>
+                  Nama Produk
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Contoh: Sabun Minyak Jelantah"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid var(--line)" }}
+                />
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                <div>
+                  <label style={{ fontSize: "12px", fontWeight: "600", display: "block", marginBottom: "4px", color: "var(--muted)" }}>
+                    Label Harga
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Contoh: Rp 10.000 / botol"
+                    value={priceTag}
+                    onChange={(e) => setPriceTag(e.target.value)}
+                    style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid var(--line)" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: "12px", fontWeight: "600", display: "block", marginBottom: "4px", color: "var(--muted)" }}>
+                    Status Ketersediaan
+                  </label>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid var(--line)", background: "white" }}
+                  >
+                    <option value="Tersedia">Tersedia</option>
+                    <option value="Sesuai Pesanan">Sesuai Pesanan</option>
+                    <option value="Habis">Habis</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: "12px", fontWeight: "600", display: "block", marginBottom: "4px", color: "var(--muted)" }}>
+                  URL Foto Produk
+                </label>
+                <input
+                  type="url"
+                  required
+                  placeholder="https://..."
+                  value={image}
+                  onChange={(e) => setImage(e.target.value)}
+                  style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid var(--line)" }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: "12px", fontWeight: "600", display: "block", marginBottom: "4px", color: "var(--muted)" }}>
+                  Deskripsi Produk
+                </label>
+                <textarea
+                  required
+                  rows="3"
+                  placeholder="Ceritakan bahan olahan dan manfaat produk..."
+                  value={desc}
+                  onChange={(e) => setDesc(e.target.value)}
+                  style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid var(--line)", fontFamily: "inherit", resize: "none" }}
+                ></textarea>
+              </div>
+
+              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "16px" }}>
+                <Button variant="secondary" onClick={() => setIsModalOpen(false)}>Batal</Button>
+                <Button type="submit" variant="primary">Simpan Produk</Button>
+              </div>
+            </form>
+          </div>
         </div>
+      )}
+    </>
+  );
+}
+
+function Prices({ go, currentUser, logout, prices, setPrices }) {
+  return (
+    <div>
+      <Header go={go} currentUser={currentUser} logout={logout} />
+      <div className="section">
+        <PriceTableView prices={prices} setPrices={setPrices} isAdmin={false} />
       </div>
       <Footer />
     </div>
   );
 }
 
-function Resident({ go }) {
+function Products({ go, currentUser, logout, products, setProducts }) {
   return (
     <div>
-      <Header go={go} />
+      <Header go={go} currentUser={currentUser} logout={logout} />
+      <div className="section">
+        <ProductGridView products={products} setProducts={setProducts} isAdmin={false} />
+      </div>
+      <Footer />
+    </div>
+  );
+}
+
+function Resident({ go, currentUser, logout, depositHistory }) {
+  const currentResidentName = currentUser?.name || "Ibu Siti Aminah";
+  const userDeposits = depositHistory.filter(
+    (d) => d.name.toLowerCase() === currentResidentName.toLowerCase()
+  );
+  const totalUserBalance = userDeposits.reduce((sum, d) => sum + d.nominal, 0) || 45000;
+
+  return (
+    <div>
+      <Header go={go} currentUser={currentUser} logout={logout} />
       <div className="section" style={{ maxWidth: "800px" }}>
         <div className="form-panel" style={{ background: "var(--forest)", color: "white" }}>
-          <span style={{ fontSize: "12px", opacity: 0.8 }}>PORTAL NASABAH WARGA</span>
-          <h2 style={{ fontSize: "28px", margin: "10px 0" }}>Ibu Siti Aminah (BSCK-001)</h2>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: "12px", opacity: 0.8 }}>PORTAL NASABAH WARGA</span>
+            <span style={{ fontSize: "11px", background: "rgba(255,255,255,0.15)", padding: "4px 10px", borderRadius: "999px" }}>
+              Tercatat Aktif
+            </span>
+          </div>
+          <h2 style={{ fontSize: "28px", margin: "10px 0" }}>
+            {currentResidentName}
+          </h2>
           <div style={{ fontSize: "36px", fontWeight: "bold", margin: "14px 0", color: "var(--leaf)" }}>
-            Rp 45.000
+            {rupiah(totalUserBalance)}
           </div>
           <p style={{ fontSize: "13px", opacity: 0.8 }}>
-            Saldo tabungan aktif dapat dicairkan untuk belanja sembako di warung atau dialihkan ke tabungan emas Pegadaian bila mencapai Rp 50.000[cite: 1, 2].
+            Saldo tabungan aktif dapat dicairkan untuk belanja sembako di warung atau dialihkan ke tabungan emas Pegadaian bila mencapai Rp 50.000.
           </p>
         </div>
 
@@ -381,18 +952,22 @@ function Resident({ go }) {
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td>14 Okt 2026</td>
-                <td>Botol Plastik Bersih[cite: 1, 2]</td>
-                <td>4 kg</td>
-                <td>+Rp 8.000</td>
-              </tr>
-              <tr>
-                <td>02 Okt 2026</td>
-                <td>Minyak Jelantah[cite: 1, 2]</td>
-                <td>3 kg</td>
-                <td>+Rp 9.000</td>
-              </tr>
+              {userDeposits.length > 0 ? (
+                userDeposits.map((d, idx) => (
+                  <tr key={idx}>
+                    <td>{d.date}</td>
+                    <td>{d.item}</td>
+                    <td>{d.weight}</td>
+                    <td><b style={{ color: "var(--green)" }}>+{rupiah(d.nominal)}</b></td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="4" style={{ textAlign: "center", color: "var(--muted)", padding: "24px" }}>
+                    Belum ada riwayat setoran tercatat untuk akun ini.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -402,28 +977,40 @@ function Resident({ go }) {
   );
 }
 
-function AdminShell({ page, go, children }) {
+function AdminShell({ page, go, currentUser, children }) {
   const sideItems = [
-    ["report", "Dashboard", "admin"],
-    ["scale", "Setor Sampah", "deposit"],
-    ["box", "Daftar Harga", "prices"],
-    ["wallet", "Produk", "products"]
+    ["Dashboard", "admin"],
+    ["Setor Sampah", "deposit"],
+    ["Daftar Harga", "admin_prices"],
+    ["Produk", "admin_products"]
   ];
 
   return (
     <div className="admin-shell">
       <aside>
         <Brand />
-        <div style={{ marginTop: "36px" }}>
-          {sideItems.map(([ic, label, target]) => (
+        <div style={{ marginTop: "20px", padding: "12px", background: "rgba(255,255,255,0.08)", borderRadius: "12px" }}>
+          <span style={{ fontSize: "11px", color: "#a4c2b5", display: "block" }}>Petugas Bertugas:</span>
+          <b style={{ fontSize: "14px", color: "white" }}>{currentUser?.name || "Admin Pengurus"}</b>
+        </div>
+        <div style={{ marginTop: "24px" }}>
+          {sideItems.map(([label, target]) => (
             <button
               key={target}
               onClick={() => go(target)}
               className={`admin-nav-item ${page === target ? "active" : ""}`}
+              style={{ paddingLeft: "16px" }}
             >
-              <Icon name={ic} size={18} /> {label}
+              {label}
             </button>
           ))}
+          <button
+            onClick={() => go("home")}
+            className="admin-nav-item"
+            style={{ marginTop: "20px", color: "#e8a098", paddingLeft: "16px" }}
+          >
+            ← Keluar ke Beranda
+          </button>
         </div>
       </aside>
       <div className="admin-main">{children}</div>
@@ -431,25 +1018,27 @@ function AdminShell({ page, go, children }) {
   );
 }
 
-function Admin({ go }) {
+function Admin({ go, currentUser, prices, products, depositHistory }) {
+  const totalWeightLogged = depositHistory.reduce((sum, d) => sum + (parseFloat(d.weight) || 0), 0) + 87.5;
+
   return (
-    <AdminShell page="admin" go={go}>
+    <AdminShell page="admin" go={go} currentUser={currentUser}>
       <h1 style={{ fontSize: "28px", color: "var(--forest)", marginBottom: "20px" }}>Dashboard Pengurus</h1>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "20px", marginBottom: "30px" }}>
         <div className="form-panel">
           <span className="kicker">Total Sampah Terkumpul</span>
-          <h2 style={{ fontSize: "32px", color: "var(--forest)", marginTop: "8px" }}>87.5 Kg</h2>
-          <small style={{ color: "var(--muted)" }}>Bulan Oktober 2026[cite: 1, 2]</small>
+          <h2 style={{ fontSize: "32px", color: "var(--forest)", marginTop: "8px" }}>{totalWeightLogged.toFixed(1)} Kg</h2>
+          <small style={{ color: "var(--muted)" }}>Bulan Oktober 2026</small>
         </div>
         <div className="form-panel">
-          <span className="kicker">Nasabah Aktif</span>
-          <h2 style={{ fontSize: "32px", color: "var(--forest)", marginTop: "8px" }}>42 Warga</h2>
-          <small style={{ color: "var(--muted)" }}>Terdaftar resmi[cite: 1, 2]</small>
+          <span className="kicker">Katalog Sampah Aktif</span>
+          <h2 style={{ fontSize: "32px", color: "var(--forest)", marginTop: "8px" }}>{prices.length} Jenis</h2>
+          <small style={{ color: "var(--muted)" }}>Tersinkronisasi otomatis</small>
         </div>
         <div className="form-panel">
-          <span className="kicker">Batch Emas Pegadaian</span>
-          <h2 style={{ fontSize: "32px", color: "var(--amber)", marginTop: "8px" }}>6 Berkas</h2>
-          <small style={{ color: "var(--muted)" }}>Siap disetor ke Situbondo[cite: 1, 2]</small>
+          <span className="kicker">Produk Daur Ulang</span>
+          <h2 style={{ fontSize: "32px", color: "var(--amber)", marginTop: "8px" }}>{products.length} Karya</h2>
+          <small style={{ color: "var(--muted)" }}>Aktif di katalog publik</small>
         </div>
       </div>
       <Button onClick={() => go("deposit")}>+ Catat Setoran Baru</Button>
@@ -457,22 +1046,45 @@ function Admin({ go }) {
   );
 }
 
-function Deposit({ go }) {
+function Deposit({ go, currentUser, prices, onAddDeposit }) {
   const [step, setStep] = useState(1);
   const [qty, setQty] = useState(2.5);
   const [wasteIdx, setWasteIdx] = useState(0);
+  const [residentName, setResidentName] = useState("Ibu Siti Aminah");
 
-  const selectedWaste = prices[wasteIdx];
-  const total = selectedWaste[3] * qty;
+  const selectedWaste = prices[wasteIdx] || prices[0];
+  const total = selectedWaste ? selectedWaste[3] * qty : 0;
+
+  const handleConfirmDeposit = () => {
+    onAddDeposit({
+      date: "Hari Ini",
+      name: residentName.trim(),
+      item: `${selectedWaste[0]} (${selectedWaste[1]})`,
+      weight: `${qty} ${selectedWaste[2]}`,
+      nominal: total
+    });
+    setStep(2);
+  };
 
   return (
-    <AdminShell page="deposit" go={go}>
+    <AdminShell page="deposit" go={go} currentUser={currentUser}>
       <div style={{ maxWidth: "600px" }}>
         <h1 style={{ fontSize: "28px", color: "var(--forest)", marginBottom: "20px" }}>Formulir Setor Sampah</h1>
-        
+
         {step === 1 && (
           <div className="form-panel">
             <h3 style={{ marginBottom: "16px" }}>Pilih Jenis Sampah & Masukkan Timbangan</h3>
+
+            <div style={{ marginBottom: "16px" }}>
+              <label style={{ display: "block", fontSize: "13px", marginBottom: "6px", color: "var(--muted)" }}>Nama Warga Penabung</label>
+              <input
+                type="text"
+                value={residentName}
+                onChange={(e) => setResidentName(e.target.value)}
+                style={{ width: "100%", padding: "12px", borderRadius: "10px", border: "1px solid var(--line)" }}
+              />
+            </div>
+
             <div style={{ marginBottom: "16px" }}>
               <label style={{ display: "block", fontSize: "13px", marginBottom: "6px", color: "var(--muted)" }}>Jenis Sampah</label>
               <select
@@ -481,12 +1093,12 @@ function Deposit({ go }) {
                 style={{ width: "100%", padding: "12px", borderRadius: "10px", border: "1px solid var(--line)" }}
               >
                 {prices.map((p, idx) => (
-                  <option key={idx} value={idx}>{p[0]} - {p[1]} ({rupiah(p[3])}/{p[2]})[cite: 1, 2]</option>
+                  <option key={idx} value={idx}>{p[0]} - {p[1]} ({rupiah(p[3])}/{p[2]})</option>
                 ))}
               </select>
             </div>
             <div style={{ marginBottom: "20px" }}>
-              <label style={{ display: "block", fontSize: "13px", marginBottom: "6px", color: "var(--muted)" }}>Berat / Timbangan ({selectedWaste[2]})</label>
+              <label style={{ display: "block", fontSize: "13px", marginBottom: "6px", color: "var(--muted)" }}>Berat / Timbangan ({selectedWaste?.[2]})</label>
               <input
                 type="number"
                 step="0.1"
@@ -498,8 +1110,11 @@ function Deposit({ go }) {
             <div style={{ padding: "16px", background: "var(--paper)", borderRadius: "12px", marginBottom: "20px" }}>
               <span style={{ fontSize: "12px", color: "var(--muted)" }}>Total Tabungan Setoran:</span>
               <div style={{ fontSize: "24px", fontWeight: "bold", color: "var(--green)" }}>{rupiah(total)}</div>
+              <small style={{ color: "var(--muted)", fontSize: "11px", display: "block", marginTop: "4px" }}>
+                Dicatat oleh: <b>{currentUser?.name || "Admin"}</b>
+              </small>
             </div>
-            <Button onClick={() => setStep(2)}>Lanjut Konfirmasi</Button>
+            <Button onClick={handleConfirmDeposit}>Lanjut Konfirmasi</Button>
           </div>
         )}
 
@@ -510,7 +1125,7 @@ function Deposit({ go }) {
             </div>
             <h2>Setoran Berhasil Dicatat!</h2>
             <p style={{ color: "var(--muted)", margin: "10px 0 24px" }}>
-              Saldo nasabah telah berhasil ditambah sebesar <b>{rupiah(total)}</b>.
+              Saldo nasabah <b>{residentName}</b> telah berhasil ditambah sebesar <b>{rupiah(total)}</b> oleh petugas <b>{currentUser?.name || "Admin"}</b>. Data otomatis diperbarui di Portal Warga.
             </p>
             <Button onClick={() => setStep(1)}>Input Setoran Lain</Button>
           </div>
@@ -527,21 +1142,21 @@ function Footer() {
         <div>
           <Brand />
           <p style={{ marginTop: "16px" }}>
-            Mewujudkan zero waste permukiman melalui pembiasaan pilah sampah rumah tangga dan pemberdayaan ekonomi sirkular warga Situbondo[cite: 1, 2].
+            Mewujudkan zero waste permukiman melalui pembiasaan pilah sampah rumah tangga dan pemberdayaan ekonomi sirkular warga Situbondo.
           </p>
         </div>
         <div>
           <h4 style={{ color: "white", marginBottom: "14px" }}>Alamat & Lokasi</h4>
-          <p>Bank Sampah Cahaya Kerja<br />Kabupaten Situbondo, Jawa Timur[cite: 1, 2]</p>
+          <p>Bank Sampah Cahaya Kerja<br />Kabupaten Situbondo, Jawa Timur</p>
         </div>
         <div>
           <h4 style={{ color: "white", marginBottom: "14px" }}>Kemitraan</h4>
-          <p>Dinas Lingkungan Hidup (DLH)<br />Pegadaian Situbondo[cite: 1, 2]</p>
+          <p>Dinas Lingkungan Hidup (DLH)<br />Pegadaian Situbondo</p>
         </div>
       </div>
       <div className="footer-bottom">
         <span>© 2026 ECO-CAHAYA. Hak cipta dilindungi.</span>
-        <span>UINIC 8.0 Web Development[cite: 4]</span>
+        <span>UINIC 8.0 Web Development</span>
       </div>
     </footer>
   );
@@ -549,19 +1164,87 @@ function Footer() {
 
 export default function App() {
   const [page, setPage] = useState("home");
+  const [currentUser, setCurrentUser] = useState(null);
+  const [pendingTargetPage, setPendingTargetPage] = useState(null);
 
-  const go = (p) => {
-    setPage(p);
+  const [prices, setPrices] = useState(initialPrices);
+  const [products, setProducts] = useState(initialProducts);
+  const [depositHistory, setDepositHistory] = useState(initialDepositHistory);
+
+  const handleAddDeposit = (newRecord) => {
+    setDepositHistory([newRecord, ...depositHistory]);
+  };
+
+  const go = (target) => {
+    if (target === "resident") {
+      if (!currentUser || currentUser.role !== "warga") {
+        setPendingTargetPage(target);
+        setPage("login");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+    }
+
+    if (["admin", "deposit", "admin_prices", "admin_products"].includes(target)) {
+      if (!currentUser || currentUser.role !== "admin") {
+        setPendingTargetPage(target);
+        setPage("login");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+    }
+
+    setPage(target);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  return useMemo(() => {
-    if (page === "home") return <Home go={go} />;
-    if (page === "admin") return <Admin go={go} />;
-    if (page === "deposit") return <Deposit go={go} />;
-    if (page === "prices") return <Prices go={go} />;
-    if (page === "products") return <Products go={go} />;
-    if (page === "resident") return <Resident go={go} />;
-    return <Home go={go} />;
-  }, [page]);
+  const handleLoginSuccess = (userData) => {
+    setCurrentUser(userData);
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setPage("home");
+  };
+
+  return (
+    <>
+      {useMemo(() => {
+        if (page === "login") {
+          return (
+            <LoginPage
+              go={setPage}
+              targetPage={pendingTargetPage || "resident"}
+              onLoginSuccess={handleLoginSuccess}
+            />
+          );
+        }
+        if (page === "home") return <Home go={go} currentUser={currentUser} logout={handleLogout} products={products} />;
+        if (page === "admin") return <Admin go={go} currentUser={currentUser} prices={prices} products={products} depositHistory={depositHistory} />;
+        if (page === "deposit") return <Deposit go={go} currentUser={currentUser} prices={prices} onAddDeposit={handleAddDeposit} />;
+
+        if (page === "admin_prices") {
+          return (
+            <AdminShell page="admin_prices" go={go} currentUser={currentUser}>
+              <PriceTableView prices={prices} setPrices={setPrices} isAdmin={true} />
+            </AdminShell>
+          );
+        }
+        if (page === "admin_products") {
+          return (
+            <AdminShell page="admin_products" go={go} currentUser={currentUser}>
+              <ProductGridView products={products} setProducts={setProducts} isAdmin={true} />
+            </AdminShell>
+          );
+        }
+
+        if (page === "prices") return <Prices go={go} currentUser={currentUser} logout={handleLogout} prices={prices} setPrices={setPrices} />;
+        if (page === "products") return <Products go={go} currentUser={currentUser} logout={handleLogout} products={products} setProducts={setProducts} />;
+        if (page === "resident") return <Resident go={go} currentUser={currentUser} logout={handleLogout} depositHistory={depositHistory} />;
+        return <Home go={go} currentUser={currentUser} logout={handleLogout} products={products} />;
+      }, [page, currentUser, pendingTargetPage, prices, products, depositHistory])}
+
+      <AIChatBot />
+    </>
+  );
 }
