@@ -284,7 +284,7 @@ function LoginPage({
         setIsForgotPassword(false);
       } else if (isRegistering) {
         await onRegister({ name: name.trim(), email: email.trim(), phone: phone.trim(), password });
-        setSuccessMsg("Pendaftaran berhasil. Periksa email jika diminta melakukan verifikasi, lalu tunggu persetujuan pengurus sebelum masuk.");
+        setSuccessMsg("Pendaftaran berhasil. Akun warga langsung aktif, silakan masuk dengan email dan kata sandi.");
         setIsRegistering(false);
       } else {
         await onLogin({ email: email.trim(), password, targetPage });
@@ -324,7 +324,7 @@ function LoginPage({
               : isForgotPassword
                 ? "Masukkan email akun. Kami akan mengirim tautan untuk mengatur ulang kata sandi."
                 : isResidentPortal
-                  ? "Masuk dengan email dan kata sandi. Akun warga baru perlu disetujui pengurus sebelum dapat melihat saldo."
+                  ? "Masuk dengan email dan kata sandi. Akun warga baru langsung aktif setelah mendaftar."
                   : "Masuk menggunakan akun pengurus yang telah diaktifkan di sistem."}
           </p>
 
@@ -2040,7 +2040,7 @@ function AdminAccounts({ go, currentUser, accounts, setAccounts, newOrdersCount,
   };
   return (
     <AdminShell page="admin_accounts" go={go} currentUser={currentUser} newOrdersCount={newOrdersCount} newSembakoCount={newSembakoCount}>
-      <div className="section-head" style={{ textAlign: "left", marginBottom: "20px" }}><h2>Akun Warga</h2><p>Periksa nama dan nomor warga sebelum mengaktifkan akun. Akun menunggu persetujuan tidak dapat melihat saldo.</p></div>
+      <div className="section-head" style={{ textAlign: "left", marginBottom: "20px" }}><h2>Akun Warga</h2><p>Akun warga baru otomatis aktif setelah pendaftaran. Akun lama yang masih menunggu persetujuan tetap dapat dikelola di sini.</p></div>
       <div className="table-wrap" style={{ background: "white" }}><table><thead><tr><th>Nama</th><th>Email</th><th>WhatsApp</th><th>Status</th><th>Aksi</th></tr></thead><tbody>
         {accounts.filter((account) => account.role === "resident").map((account) => <tr key={account.user_id}><td>{account.full_name}</td><td>{account.email}</td><td>{account.phone}</td><td>{account.status}</td><td>{account.status === "pending" && <><Button onClick={() => updateAccount(account, "active")} style={{ padding: "7px 12px", marginRight: "6px" }}>Setujui</Button><Button variant="secondary" onClick={() => updateAccount(account, "rejected")} style={{ padding: "7px 12px" }}>Tolak</Button></>}</td></tr>)}
         {accounts.filter((account) => account.role === "resident").length === 0 && <tr><td colSpan="5">Belum ada akun warga.</td></tr>}
@@ -2364,12 +2364,15 @@ export default function App() {
   };
 
   const handleRegister = async ({ name, email, phone, password }) => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { full_name: name, phone } }
     });
     if (error) throw error;
+    if (!data.session) {
+      throw new Error("Akun sudah tersimpan, tetapi Supabase masih mewajibkan verifikasi email. Agar warga bisa langsung masuk, nonaktifkan Confirm email di Dashboard Supabase: Authentication > Providers > Email.");
+    }
     const { error: signOutError } = await supabase.auth.signOut();
     if (signOutError) throw signOutError;
   };
