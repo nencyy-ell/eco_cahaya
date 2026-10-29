@@ -11,11 +11,13 @@ npm run dev
 
 ## Menyiapkan database Supabase
 
-Sebelum menggunakan versi aplikasi ini, jalankan migration berikut satu kali melalui **Supabase Dashboard → SQL Editor**:
+Sebelum menggunakan versi aplikasi ini, jalankan migration berikut satu kali dan berurutan melalui **Supabase Dashboard → SQL Editor**:
 
-`supabase/migrations/202610280001_bank_operations.sql`
+1. `supabase/migrations/202610280001_bank_operations.sql`
+2. `supabase/migrations/202610290001_activate_resident_accounts.sql`
+3. `supabase/migrations/202610290002_transaction_activity_log.sql`
 
-Migration menambahkan autentikasi/approval akun warga, saldo dan permintaan penukaran, stok produk/pesanan, pergerakan stok sampah, pengaturan informasi publik, serta kebijakan Row Level Security. Migration mengganti kebijakan RLS pada `products_db`, `orders`, `prices`, `deposits`, `gold_batches`, dan `sembako_requests`; dua tabel penukaran lama dibuat tidak tersedia langsung setelah datanya disalin ke tabel baru. Cadangkan database dan uji di project staging terlebih dahulu. Migration belum dijalankan ke project Supabase live oleh aplikasi ini.
+Migration menambahkan autentikasi akun warga, saldo dan permintaan penukaran, stok produk/pesanan, pergerakan stok sampah, pengaturan informasi publik, dan kebijakan Row Level Security. Migration aktivitas mencatat setoran, pesanan beserta perubahan statusnya, penukaran, perubahan akun, dan stok sampah keluar ke `activity_logs` untuk rekap pengurus. Log hanya mencakup aktivitas setelah migration tersebut dijalankan; riwayat lama tidak dapat direkonstruksi. Penghapusan pesanan juga dinonaktifkan agar catatan transaksi tetap tersedia. Migration mengganti kebijakan RLS pada `products_db`, `orders`, `prices`, `deposits`, `gold_batches`, dan `sembako_requests`; dua tabel penukaran lama dibuat tidak tersedia langsung setelah datanya disalin ke tabel baru. Cadangkan database dan uji di project staging terlebih dahulu. Migration belum dijalankan ke project Supabase live oleh aplikasi ini.
 
 Migration mengasumsikan struktur lama berikut sudah tersedia: `products_db` dengan kolom `id` dan `title`; `orders` dengan `id`, `product_name`, `buyer_name`, `buyer_phone`, `shipping_address`, dan `status`; `deposits` dengan `user_name`, `waste_type`, `weight`, `nominal`, dan `deposit_date`; serta `gold_batches` dan `sembako_requests` dengan `id`, `user_name`, `amount`, dan `status`. Tipe `orders.product_id` baru disesuaikan otomatis dengan tipe `products_db.id`; jika kolom itu sudah ada, pastikan tipenya cocok. Pastikan juga nama/tipe kolom lain sesuai sebelum menjalankan migration.
 
@@ -39,7 +41,7 @@ set email = excluded.email,
 
 Ganti `EMAIL_PENGURUS` dan `Nama Pengurus` dengan data yang sesuai. Jika query tidak memasukkan atau memperbarui baris, pastikan akun dengan email tersebut ada di **Authentication → Users** pada project yang sama. Login memakai email dan kata sandi akun Auth tersebut. Jika muncul `Invalid login credentials`, periksa project/email dan gunakan reset kata sandi di Supabase Dashboard; perubahan `bank_accounts` tidak dapat memperbaiki kata sandi Auth. Jangan pernah menaruh kata sandi atau service-role key ke dalam source code.
 
-Akun warga mendaftar melalui Portal Warga menggunakan email dan kata sandi, lalu menunggu pengurus memeriksa nama dan menyetujui akun di menu **Akun Warga**. Nama yang sudah dipakai akun warga aktif tidak dapat digunakan oleh akun aktif lain.
+Akun warga dapat mendaftar melalui Portal Warga menggunakan email dan kata sandi. Pengurus juga dapat memulai penambahan akun dari menu **Akun Warga** dengan mengirim tautan verifikasi email; nama dan nomor WhatsApp dapat diperbarui pada menu tersebut. Nama yang sudah dipakai akun warga aktif tidak dapat digunakan oleh akun aktif lain. Pengurus tetap dapat memeriksa dan mengelola status akun dari halaman tersebut.
 
 ### Verifikasi email dan lupa kata sandi
 

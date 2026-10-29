@@ -6,7 +6,7 @@ const supabaseAnonKey = 'sb_publishable_-TN3qHMF8WNr1nk5pxS8HQ_owPmkcsy';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const AppNotificationsContext = createContext(null);
-const heroImage = "https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=1200&q=80";
+const heroImage = "/lainnyaa.jpeg";
 const defaultBankSettings = {
   whatsapp_number: "6285739913054",
   address: "Jl. PB Sudirman Gang Cendana RT 01/RW 01, Karang Asem, Kelurahan Patokan, Kabupaten Situbondo",
@@ -27,6 +27,15 @@ const dateInputValue = (date) => {
   const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
   return localDate.toISOString().slice(0, 10);
 };
+const wasteCategories = [
+  { name: "Kertas", image: "/kertas.jpeg", matches: /kertas|kardus|koran|buku|hvs|buram/i },
+  { name: "Kaca", image: "/kaca.jpeg", matches: /kaca|beling/i },
+  { name: "Minyak Jelantah", image: "/minyak%20jelantah.jpeg", matches: /minyak|jelantah/i },
+  { name: "Plastik", image: "/logam.jpeg", matches: /plastik|botol|gelas|kresek/i },
+  { name: "Logam", image: "/besi.jpeg", matches: /logam|besi|aluminium|kaleng|tembaga/i },
+  { name: "Lainnya", image: "/lainnyaa.jpeg", matches: /.*/ }
+];
+const getWasteCategory = (item) => wasteCategories.find((category) => category.matches.test(`${item.name} ${item.condition || ""}`))?.name || "Lainnya";
 
 function useAppNotifications() {
   const notifications = useContext(AppNotificationsContext);
@@ -144,6 +153,40 @@ function Button({ children, onClick, variant = "primary", className = "", disabl
   );
 }
 
+function TablePagination({ query, setQuery, page, pageCount, total, placeholder = "Cari data...", onPageChange, showSearch = true, showPagination = true }) {
+  return (
+    <>
+      {showSearch && (
+        <div style={{ marginBottom: "14px" }}>
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              onPageChange(1);
+            }}
+            placeholder={placeholder}
+            aria-label="Filter data tabel"
+            style={{ width: "100%", maxWidth: "420px", padding: "10px 12px", border: "1px solid var(--line)", borderRadius: "8px" }}
+          />
+        </div>
+      )}
+      {showPagination && total > 0 && (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", marginTop: "14px" }}>
+          <span style={{ color: "var(--muted)", fontSize: "13px" }}>
+            Menampilkan {(page - 1) * 10 + 1}–{Math.min(page * 10, total)} dari {total} data
+          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <Button variant="secondary" disabled={page === 1} onClick={() => onPageChange(page - 1)}>Sebelumnya</Button>
+            <span style={{ color: "var(--muted)", fontSize: "13px" }}>Halaman {page} dari {pageCount}</span>
+            <Button variant="secondary" disabled={page === pageCount} onClick={() => onPageChange(page + 1)}>Berikutnya</Button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 function Brand() {
   return (
     <div className="brand" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -186,18 +229,18 @@ function Header({ go, currentTab, currentUser, logout }) {
 
       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
         {currentUser ? (
-          <button
-            onClick={logout}
+          <span
             style={{
               background: "#f0f4f1", border: "1px solid var(--line)", padding: "8px 16px",
               borderRadius: "999px", fontSize: "13px", fontWeight: "600", color: "var(--forest)",
-              display: "flex", alignItems: "center", gap: "6px", cursor: "pointer"
+              display: "flex", alignItems: "center", gap: "6px"
             }}
           >
             <Icon name="user" size={15} />
             <span>{currentUser.name} ({currentUser.role === "admin" ? "Pengurus" : "Warga"})</span>
-          </button>
+          </span>
         ) : null}
+        {currentUser && <Button variant="secondary" onClick={logout} style={{ borderColor: "var(--line)", color: "var(--forest)", fontWeight: "600", padding: "9px 14px" }}>Keluar</Button>}
 
         <Button variant="secondary" onClick={() => go("resident")} style={{ borderColor: "var(--forest)", color: "var(--forest)", fontWeight: "600", padding: "10px 18px" }}>
           Portal Warga
@@ -388,7 +431,7 @@ function LoginPage({
                     />
                   </>
                 )}
-            </div>
+              </div>
             )}
 
             {!passwordResetComplete && (
@@ -542,10 +585,18 @@ function Home({ go, products, totalCleanWasteKg, settings = defaultBankSettings 
 function Prices({ go, currentUser, logout, prices, settings }) {
   const [q, setQ] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedCategory, setSelectedCategory] = useState(null);
   const itemsPerPage = 10;
-  const filtered = prices.filter((p) => p.name.toLowerCase().includes(q.toLowerCase()) || p.condition.toLowerCase().includes(q.toLowerCase()));
-  const pageCount = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
-  const visiblePrices = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const matchingPrices = prices.filter((item) => `${item.name} ${item.condition} ${getWasteCategory(item)}`.toLowerCase().includes(q.toLowerCase()));
+  const categories = wasteCategories.map((category) => ({
+    ...category,
+    count: matchingPrices.filter((item) => getWasteCategory(item) === category.name).length
+  })).filter((category) => category.count > 0);
+  const categoryPrices = selectedCategory
+    ? matchingPrices.filter((item) => getWasteCategory(item) === selectedCategory)
+    : [];
+  const pageCount = Math.max(1, Math.ceil(categoryPrices.length / itemsPerPage));
+  const visiblePrices = categoryPrices.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <div>
@@ -554,7 +605,7 @@ function Prices({ go, currentUser, logout, prices, settings }) {
         <div className="section-head" style={{ marginBottom: "30px" }}>
           <span className="kicker">Transparan dan Menguntungkan Warga</span>
           <h2>Daftar Harga Setor Sampah</h2>
-          <p>Harga beli disesuaikan dengan standar pengepul resmi agar ibu-ibu makin semangat memilah dari dapur.</p>
+          <p>Pilih kategori sampah untuk melihat jenis, kondisi, satuan, dan harga setor yang berlaku.</p>
         </div>
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px", marginBottom: "24px" }}>
@@ -563,11 +614,12 @@ function Prices({ go, currentUser, logout, prices, settings }) {
               <Icon name="search" />
               <input
                 type="text"
-                placeholder="Cari jenis sampah (misal: botol, kardus, jelantah)..."
+                placeholder="Cari kategori atau jenis sampah..."
                 value={q}
                 onChange={(e) => {
                   setQ(e.target.value);
                   setCurrentPage(1);
+                  setSelectedCategory(null);
                 }}
                 style={{ width: "100%", border: 0, outline: "none", fontSize: "14px" }}
               />
@@ -575,46 +627,65 @@ function Prices({ go, currentUser, logout, prices, settings }) {
           </div>
         </div>
 
-        <div className="table-wrap" style={{ background: "white" }}>
-          <table>
-            <thead>
-              <tr>
-                <th>Jenis Sampah</th>
-                <th>Kondisi / Keterangan</th>
-                <th>Satuan</th>
-                <th>Harga Beli</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visiblePrices.map((item, idx) => (
-                <tr key={idx}>
-                  <td><b>{item.name}</b></td>
-                  <td>{item.condition}</td>
-                  <td>{item.unit}</td>
-                  <td><b style={{ color: "var(--green)" }}>{rupiah(item.price)}</b></td>
-                </tr>
-              ))}
-              {visiblePrices.length === 0 && (
-                <tr>
-                  <td colSpan="4" style={{ textAlign: "center", color: "var(--muted)", padding: "24px" }}>
-                    Tidak ada jenis sampah yang cocok.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: "18px" }}>
+          {categories.map((category) => (
+            <button
+              type="button"
+              key={category.name}
+              onClick={() => {
+                setSelectedCategory(category.name);
+                setCurrentPage(1);
+              }}
+              aria-pressed={selectedCategory === category.name}
+              style={{ textAlign: "left", padding: 0, overflow: "hidden", borderRadius: "16px", border: selectedCategory === category.name ? "2px solid var(--forest)" : "1px solid var(--line)", background: "white", cursor: "pointer", boxShadow: "0 6px 20px rgba(20,50,35,0.08)" }}
+            >
+              <img
+                src={category.image}
+                alt={`Sampah kategori ${category.name}`}
+                onError={(event) => {
+                  event.currentTarget.onerror = null;
+                  event.currentTarget.src = "/kompos.jpeg";
+                }}
+                style={{ display: "block", width: "100%", height: "138px", objectFit: "cover" }}
+              />
+              <span style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", color: "var(--forest)" }}>
+                <b>{category.name}</b><small>{category.count} jenis</small>
+              </span>
+            </button>
+          ))}
+          {categories.length === 0 && <p style={{ color: "var(--muted)" }}>Tidak ada kategori atau jenis sampah yang cocok.</p>}
         </div>
-        {filtered.length > itemsPerPage && (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", marginTop: "16px" }}>
-            <span style={{ color: "var(--muted)", fontSize: "13px" }}>
-              Menampilkan {((currentPage - 1) * itemsPerPage) + 1}–{Math.min(currentPage * itemsPerPage, filtered.length)} dari {filtered.length} jenis sampah
-            </span>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <Button variant="secondary" disabled={currentPage === 1} onClick={() => setCurrentPage((page) => page - 1)}>Sebelumnya</Button>
-              <span style={{ color: "var(--muted)", fontSize: "13px" }}>Halaman {currentPage} dari {pageCount}</span>
-              <Button variant="secondary" disabled={currentPage === pageCount} onClick={() => setCurrentPage((page) => page + 1)}>Berikutnya</Button>
+        {selectedCategory && (
+          <section aria-live="polite" style={{ marginTop: "28px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+              <h3 style={{ margin: 0, color: "var(--forest)" }}>Detail kategori {selectedCategory}</h3>
+              <Button variant="secondary" onClick={() => setSelectedCategory(null)}>Tutup detail</Button>
             </div>
-          </div>
+            <div className="table-wrap" style={{ background: "white" }}>
+              <table>
+                <thead><tr><th>Jenis Sampah</th><th>Kondisi / Keterangan</th><th>Satuan</th><th>Harga Beli</th></tr></thead>
+                <tbody>
+                  {visiblePrices.map((item) => (
+                    <tr key={item.id}>
+                      <td><b>{item.name}</b></td><td>{item.condition}</td><td>{item.unit}</td>
+                      <td><b style={{ color: "var(--green)" }}>{rupiah(item.price)}</b></td>
+                    </tr>
+                  ))}
+                  {visiblePrices.length === 0 && <tr><td colSpan="4" style={{ textAlign: "center", color: "var(--muted)", padding: "24px" }}>Tidak ada jenis sampah yang cocok.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+            {categoryPrices.length > itemsPerPage && (
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", marginTop: "16px" }}>
+                <span style={{ color: "var(--muted)", fontSize: "13px" }}>Menampilkan {(currentPage - 1) * itemsPerPage + 1}–{Math.min(currentPage * itemsPerPage, categoryPrices.length)} dari {categoryPrices.length} jenis</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <Button variant="secondary" disabled={currentPage === 1} onClick={() => setCurrentPage((page) => page - 1)}>Sebelumnya</Button>
+                  <span style={{ color: "var(--muted)", fontSize: "13px" }}>Halaman {currentPage} dari {pageCount}</span>
+                  <Button variant="secondary" disabled={currentPage === pageCount} onClick={() => setCurrentPage((page) => page + 1)}>Berikutnya</Button>
+                </div>
+              </div>
+            )}
+          </section>
         )}
       </div>
       <Footer settings={settings} />
@@ -754,10 +825,15 @@ function Products({ go, currentUser, logout, products, onNewOrder, settings }) {
 
 function Resident({ go, currentUser, logout, depositHistory, redemptionRequests, residentBalance, onApplyRedemption, settings }) {
   const { notify } = useAppNotifications();
+  const [depositQuery, setDepositQuery] = useState("");
+  const [depositPage, setDepositPage] = useState(1);
   const currentResidentName = currentUser?.name || "";
   const userDeposits = depositHistory.filter(
     (d) => d.user_name.toLowerCase() === currentResidentName.toLowerCase()
   );
+  const matchingDeposits = userDeposits.filter((deposit) => `${deposit.deposit_date} ${deposit.waste_type}`.toLowerCase().includes(depositQuery.toLowerCase()));
+  const depositPageCount = Math.max(1, Math.ceil(matchingDeposits.length / 10));
+  const visibleDeposits = matchingDeposits.slice((depositPage - 1) * 10, depositPage * 10);
   const userRedemptions = redemptionRequests.filter((request) => request.user_id === currentUser?.id);
   const totalUserBalance = residentBalance ?? 0;
   const [goldAmount, setGoldAmount] = useState(Number(settings.gold_minimum));
@@ -886,6 +962,9 @@ function Resident({ go, currentUser, logout, depositHistory, redemptionRequests,
 
         <div className="table-wrap" style={{ background: "white" }}>
           <h3 style={{ padding: "20px", margin: 0, fontSize: "16px", color: "var(--forest)", borderBottom: "1px solid var(--line)" }}>Riwayat Setoran Sampah & Nota Digital</h3>
+          <div style={{ padding: "16px 20px 0" }}>
+            <TablePagination query={depositQuery} setQuery={setDepositQuery} page={depositPage} pageCount={depositPageCount} total={matchingDeposits.length} onPageChange={setDepositPage} placeholder="Cari tanggal atau jenis sampah..." showPagination={false} />
+          </div>
           <table>
             <thead>
               <tr>
@@ -897,9 +976,9 @@ function Resident({ go, currentUser, logout, depositHistory, redemptionRequests,
               </tr>
             </thead>
             <tbody>
-              {userDeposits.length > 0 ? (
-                userDeposits.map((d, idx) => (
-                  <tr key={idx}>
+              {visibleDeposits.length > 0 ? (
+                visibleDeposits.map((d) => (
+                  <tr key={d.id}>
                     <td>{d.deposit_date}</td>
                     <td><b>{d.waste_type}</b></td>
                     <td>{d.weight} kg</td>
@@ -917,12 +996,15 @@ function Resident({ go, currentUser, logout, depositHistory, redemptionRequests,
               ) : (
                 <tr>
                   <td colSpan="5" style={{ textAlign: "center", color: "var(--muted)", padding: "24px" }}>
-                    Belum ada riwayat setoran tercatat untuk nama ini.
+                    {userDeposits.length ? "Tidak ada setoran yang cocok dengan pencarian." : "Belum ada riwayat setoran tercatat untuk nama ini."}
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
+          <div style={{ padding: "0 20px 16px" }}>
+            <TablePagination query={depositQuery} setQuery={setDepositQuery} page={depositPage} pageCount={depositPageCount} total={matchingDeposits.length} onPageChange={setDepositPage} showSearch={false} />
+          </div>
         </div>
       </div>
 
@@ -1159,7 +1241,7 @@ function Admin({ go, currentUser, depositHistory, orders, redemptionRequests }) 
 }
 
 function AdminOrders({ go, currentUser, orders, setOrders, products, setProducts, newOrdersCount, newSembakoCount }) {
-  const { notify, confirm: confirmAction } = useAppNotifications();
+  const { notify } = useAppNotifications();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [productName, setProductName] = useState("");
   const [buyerName, setBuyerName] = useState("");
@@ -1167,11 +1249,21 @@ function AdminOrders({ go, currentUser, orders, setOrders, products, setProducts
   const [address, setAddress] = useState("");
   const [productId, setProductId] = useState("");
   const [quantity, setQuantity] = useState(1);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("Semua status");
+  const [currentPage, setCurrentPage] = useState(1);
+  const matchingOrders = orders.filter((order) => {
+    const matchesQuery = `${order.id} ${order.buyer_name} ${order.product_name} ${order.buyer_phone}`.toLowerCase().includes(query.toLowerCase());
+    return matchesQuery && (statusFilter === "Semua status" || order.status === statusFilter);
+  });
+  const pageCount = Math.max(1, Math.ceil(matchingOrders.length / 10));
+  const visibleOrders = matchingOrders.slice((currentPage - 1) * 10, currentPage * 10);
 
   const handleMarkStatus = async (id, newStatus) => {
     const { error } = await supabase.from('orders').update({ status: newStatus }).eq('id', id);
     if (!error) {
       setOrders((items) => items.map((o) => o.id === id ? { ...o, status: newStatus } : o));
+      notify(`Status pesanan berhasil diperbarui menjadi ${newStatus}.`, "success");
       const order = orders.find((item) => item.id === id);
       if (newStatus === "Ditolak" && order?.product_id) {
         const { data: product, error: productError } = await supabase.from("products_db").select("id,stock").eq("id", order.product_id).single();
@@ -1180,23 +1272,6 @@ function AdminOrders({ go, currentUser, orders, setOrders, products, setProducts
       }
     } else {
       notify("Gagal memperbarui status: " + error.message, "error");
-    }
-  };
-
-  const handleDeleteOrder = async (id) => {
-    if (await confirmAction("Hapus pesanan ini dari daftar?")) {
-      const { error } = await supabase.from('orders').delete().eq('id', id);
-      if (!error) {
-        const order = orders.find((item) => item.id === id);
-        setOrders((items) => items.filter((o) => o.id !== id));
-        if (order?.inventory_reserved && order.status !== "Selesai" && order.product_id) {
-          const { data: product, error: productError } = await supabase.from("products_db").select("id,stock").eq("id", order.product_id).single();
-          if (productError) notify(`Pesanan dihapus, tetapi stok terbaru gagal dimuat: ${productError.message}`, "error");
-          else setProducts((items) => items.map((item) => item.id === product.id ? { ...item, stock: product.stock } : item));
-        }
-      } else {
-        notify("Gagal menghapus: " + error.message, "error");
-      }
     }
   };
 
@@ -1224,6 +1299,7 @@ function AdminOrders({ go, currentUser, orders, setOrders, products, setProducts
       setAddress("");
       setProductId("");
       setQuantity(1);
+      notify("Pesanan offline berhasil dicatat.", "success");
     } else {
       notify("Gagal menambah pesanan: " + error.message, "error");
     }
@@ -1239,6 +1315,13 @@ function AdminOrders({ go, currentUser, orders, setOrders, products, setProducts
 
       <div style={{ textAlign: "right", marginBottom: "20px" }}>
         <Button variant="primary" onClick={() => setIsModalOpen(true)}>+ Tambah Pesanan Offline</Button>
+      </div>
+
+      <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "14px" }}>
+        <input type="search" value={query} onChange={(event) => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Cari nama, produk, nomor WA, atau ID..." aria-label="Cari pesanan" style={{ flex: "1 1 260px", padding: "10px 12px", border: "1px solid var(--line)", borderRadius: "8px" }} />
+        <select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); setCurrentPage(1); }} aria-label="Filter status pesanan" style={{ padding: "10px 12px", border: "1px solid var(--line)", borderRadius: "8px", background: "white" }}>
+          {["Semua status", "Baru", "Diproses", "Selesai", "Ditolak", "Dibatalkan"].map((status) => <option key={status}>{status}</option>)}
+        </select>
       </div>
 
       <div className="table-wrap" style={{ background: "white" }}>
@@ -1257,9 +1340,9 @@ function AdminOrders({ go, currentUser, orders, setOrders, products, setProducts
             </tr>
           </thead>
           <tbody>
-            {orders.length > 0 ? (
-              orders.map((o, idx) => (
-                <tr key={idx}>
+            {visibleOrders.length > 0 ? (
+              visibleOrders.map((o) => (
+                <tr key={o.id}>
                   <td><b>#{o.id}</b></td>
                   <td>{o.buyer_name}</td>
                   <td><b>{o.product_name}</b></td>
@@ -1268,7 +1351,7 @@ function AdminOrders({ go, currentUser, orders, setOrders, products, setProducts
                   <td>{o.buyer_phone}</td>
                   <td>{o.shipping_address}</td>
                   <td>
-                    <span style={{ background: o.status === 'Baru' ? '#fff5f5' : o.status === 'Diproses' ? '#fefcbf' : '#eef7f0', color: o.status === 'Baru' ? '#c53030' : o.status === 'Diproses' ? '#975a16' : 'var(--green)', padding: "4px 8px", borderRadius: "6px", fontSize: "12px", fontWeight: "600" }}>
+                    <span style={{ background: o.status === 'Baru' || o.status === 'Ditolak' || o.status === 'Dibatalkan' ? '#fff5f5' : o.status === 'Diproses' ? '#fefcbf' : '#eef7f0', color: o.status === 'Baru' || o.status === 'Ditolak' || o.status === 'Dibatalkan' ? '#c53030' : o.status === 'Diproses' ? '#975a16' : 'var(--green)', padding: "4px 8px", borderRadius: "6px", fontSize: "12px", fontWeight: "600" }}>
                       {o.status}
                     </span>
                   </td>
@@ -1280,13 +1363,12 @@ function AdminOrders({ go, currentUser, orders, setOrders, products, setProducts
                       {(o.status === 'Baru' || o.status === 'Diproses') && (
                         <button onClick={() => handleMarkStatus(o.id, 'Selesai')} style={{ padding: "5px 10px", background: "var(--forest)", color: "white", border: 0, borderRadius: "6px", fontSize: "11px", fontWeight: "600", cursor: "pointer" }}>Selesai</button>
                       )}
-                      {o.status !== 'Ditolak' && o.status !== 'Selesai' && (
+                      {o.status !== 'Ditolak' && o.status !== 'Dibatalkan' && o.status !== 'Selesai' && (
                         <button onClick={() => handleMarkStatus(o.id, 'Ditolak')} style={{ padding: "5px 10px", background: "#fff5f5", color: "#c53030", border: "1px solid #feb2b2", borderRadius: "6px", fontSize: "11px", cursor: "pointer" }}>Tolak</button>
                       )}
                       {whatsappUrl(o.buyer_phone, `Halo ${o.buyer_name}, status pesanan ${o.product_name} (${o.quantity || 1} pcs) Anda: ${o.status}.` ) && (
                         <a href={whatsappUrl(o.buyer_phone, `Halo ${o.buyer_name}, status pesanan ${o.product_name} (${o.quantity || 1} pcs) Anda: ${o.status}.`)} target="_blank" rel="noreferrer" style={{ padding: "5px 8px", background: "#e6f4ea", color: "#137333", borderRadius: "6px", fontSize: "11px", textDecoration: "none" }}>WhatsApp</a>
                       )}
-                      <button onClick={() => handleDeleteOrder(o.id)} style={{ padding: "5px 8px", background: "#fff5f5", color: "#c53030", border: "1px solid #feb2b2", borderRadius: "6px", fontSize: "11px", cursor: "pointer" }}>Hapus</button>
                     </div>
                   </td>
                 </tr>
@@ -1301,6 +1383,7 @@ function AdminOrders({ go, currentUser, orders, setOrders, products, setProducts
           </tbody>
         </table>
       </div>
+      <TablePagination query={query} setQuery={setQuery} page={currentPage} pageCount={pageCount} total={matchingOrders.length} onPageChange={setCurrentPage} showSearch={false} />
 
       {isModalOpen && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "grid", placeItems: "center", zIndex: 10000, padding: "20px" }}>
@@ -1342,6 +1425,11 @@ function AdminOrders({ go, currentUser, orders, setOrders, products, setProducts
 function AdminSembako({ go, currentUser, redemptionRequests, setRedemptionRequests, newOrdersCount, newSembakoCount }) {
   const { notify } = useAppNotifications();
   const requests = redemptionRequests.filter((request) => request.redemption_type === "sembako");
+  const [query, setQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const matchingRequests = requests.filter((request) => `${request.user_name} ${request.phone} ${request.item_details} ${request.status}`.toLowerCase().includes(query.toLowerCase()));
+  const pageCount = Math.max(1, Math.ceil(matchingRequests.length / 10));
+  const visibleRequests = matchingRequests.slice((currentPage - 1) * 10, currentPage * 10);
   const updateStatus = async (request, status) => {
     let rejectionReason = null;
     if (status === "Ditolak") {
@@ -1360,6 +1448,7 @@ function AdminSembako({ go, currentUser, redemptionRequests, setRedemptionReques
       return;
     }
     setRedemptionRequests((items) => items.map((item) => item.id === request.id ? data : item));
+    notify(`Pengajuan berhasil diperbarui menjadi ${status}.`, "success");
   };
 
   return (
@@ -1369,11 +1458,12 @@ function AdminSembako({ go, currentUser, redemptionRequests, setRedemptionReques
         <h2>Pengajuan Sembako Warga</h2>
         <p>Warga mengajukan barang dan nominal yang diinginkan. Saldo ditahan saat pengajuan; penolakan mengembalikan saldo tersedia.</p>
       </div>
+      <TablePagination query={query} setQuery={setQuery} page={currentPage} pageCount={pageCount} total={matchingRequests.length} onPageChange={setCurrentPage} placeholder="Cari nama, WhatsApp, barang, atau status..." showPagination={false} />
       <div className="table-wrap" style={{ background: "white" }}>
         <table>
           <thead><tr><th>Nama Warga</th><th>WhatsApp</th><th>Barang diminta</th><th>Nominal</th><th>Status</th><th>Aksi</th></tr></thead>
           <tbody>
-            {requests.map((request) => (
+            {visibleRequests.map((request) => (
               <tr key={request.id}>
                 <td>{request.user_name}</td>
                 <td>{request.phone}</td>
@@ -1392,10 +1482,11 @@ function AdminSembako({ go, currentUser, redemptionRequests, setRedemptionReques
                 </td>
               </tr>
             ))}
-            {requests.length === 0 && <tr><td colSpan="6" style={{ textAlign: "center", padding: "24px" }}>Belum ada pengajuan sembako.</td></tr>}
+            {visibleRequests.length === 0 && <tr><td colSpan="6" style={{ textAlign: "center", padding: "24px" }}>{requests.length ? "Tidak ada data yang cocok." : "Belum ada pengajuan sembako."}</td></tr>}
           </tbody>
         </table>
       </div>
+      <TablePagination query={query} setQuery={setQuery} page={currentPage} pageCount={pageCount} total={matchingRequests.length} onPageChange={setCurrentPage} showSearch={false} />
     </AdminShell>
   );
 }
@@ -1445,6 +1536,7 @@ function Deposit({ go, currentUser, prices, depositHistory, redemptionRequests, 
       setLastSavedRecord(data[0]);
       setResidentName("");
       setQty("");
+      notify("Setoran berhasil dicatat dan saldo warga diperbarui.", "success");
     } else {
       notify("Gagal mencatat setoran: " + error.message, "error");
     }
@@ -1573,12 +1665,17 @@ function AdminPrices({ go, currentUser, prices, setPrices, newOrdersCount, newSe
   const { notify, confirm: confirmAction } = useAppNotifications();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
+  const [query, setQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [name, setName] = useState("");
   const [condition, setCondition] = useState("");
   const [unit, setUnit] = useState("kg");
   const [price, setPrice] = useState("");
   const [co2Factor, setCo2Factor] = useState("1.5");
+  const matchingPrices = prices.filter((item) => `${item.name} ${item.condition} ${item.unit}`.toLowerCase().includes(query.toLowerCase()));
+  const pageCount = Math.max(1, Math.ceil(matchingPrices.length / 10));
+  const visiblePrices = matchingPrices.slice((currentPage - 1) * 10, currentPage * 10);
 
   const handleOpenAdd = () => {
     setEditItem(null);
@@ -1604,7 +1701,8 @@ function AdminPrices({ go, currentUser, prices, setPrices, newOrdersCount, newSe
     if (await confirmAction("Hapus jenis sampah ini dari database?")) {
       const { error } = await supabase.from('prices').delete().eq('id', id);
       if (!error) {
-        setPrices(prices.filter(p => p.id !== id));
+        setPrices((items) => items.filter((item) => item.id !== id));
+        notify("Jenis sampah berhasil dihapus dari daftar harga.", "success");
       } else {
         notify("Gagal menghapus: " + error.message, "error");
       }
@@ -1624,16 +1722,18 @@ function AdminPrices({ go, currentUser, prices, setPrices, newOrdersCount, newSe
     if (editItem) {
       const { data, error } = await supabase.from('prices').update(payload).eq('id', editItem.id).select();
       if (!error && data) {
-        setPrices(prices.map(p => p.id === editItem.id ? data[0] : p));
+        setPrices((items) => items.map((item) => item.id === editItem.id ? data[0] : item));
         setIsModalOpen(false);
+        notify("Harga sampah berhasil diperbarui.", "success");
       } else {
         notify("Gagal update: " + error.message, "error");
       }
     } else {
       const { data, error } = await supabase.from('prices').insert([payload]).select();
       if (!error && data) {
-        setPrices([data[0], ...prices]);
+        setPrices((items) => [data[0], ...items]);
         setIsModalOpen(false);
+        notify("Jenis sampah berhasil ditambahkan.", "success");
       } else {
         notify("Gagal menambah: " + error.message, "error");
       }
@@ -1652,6 +1752,7 @@ function AdminPrices({ go, currentUser, prices, setPrices, newOrdersCount, newSe
         <Button variant="primary" onClick={handleOpenAdd}>+ Tambah Jenis Sampah</Button>
       </div>
 
+      <TablePagination query={query} setQuery={setQuery} page={currentPage} pageCount={pageCount} total={matchingPrices.length} onPageChange={setCurrentPage} placeholder="Cari nama, kondisi, atau satuan..." showPagination={false} />
       <div className="table-wrap" style={{ background: "white" }}>
         <table>
           <thead>
@@ -1664,8 +1765,8 @@ function AdminPrices({ go, currentUser, prices, setPrices, newOrdersCount, newSe
             </tr>
           </thead>
           <tbody>
-            {prices.map((item, idx) => (
-              <tr key={idx}>
+            {visiblePrices.map((item) => (
+              <tr key={item.id}>
                 <td><b>{item.name}</b></td>
                 <td>{item.condition}</td>
                 <td>{item.unit}</td>
@@ -1678,9 +1779,11 @@ function AdminPrices({ go, currentUser, prices, setPrices, newOrdersCount, newSe
                 </td>
               </tr>
             ))}
+            {visiblePrices.length === 0 && <tr><td colSpan="5" style={{ textAlign: "center", padding: "24px" }}>Tidak ada harga yang cocok.</td></tr>}
           </tbody>
         </table>
       </div>
+      <TablePagination query={query} setQuery={setQuery} page={currentPage} pageCount={pageCount} total={matchingPrices.length} onPageChange={setCurrentPage} showSearch={false} />
 
       {isModalOpen && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "grid", placeItems: "center", zIndex: 10000, padding: "20px" }}>
@@ -1723,6 +1826,11 @@ function AdminPrices({ go, currentUser, prices, setPrices, newOrdersCount, newSe
 function AdminGoldBatches({ go, currentUser, redemptionRequests, setRedemptionRequests, newOrdersCount, newSembakoCount }) {
   const { notify } = useAppNotifications();
   const goldRequests = redemptionRequests.filter((request) => request.redemption_type === "gold");
+  const [query, setQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const matchingRequests = goldRequests.filter((request) => `${request.user_name} ${request.status} ${request.rejection_reason || ""}`.toLowerCase().includes(query.toLowerCase()));
+  const pageCount = Math.max(1, Math.ceil(matchingRequests.length / 10));
+  const visibleRequests = matchingRequests.slice((currentPage - 1) * 10, currentPage * 10);
   const updateStatus = async (request, status) => {
     let rejectionReason = null;
     if (status === "Ditolak") {
@@ -1741,6 +1849,7 @@ function AdminGoldBatches({ go, currentUser, redemptionRequests, setRedemptionRe
       return;
     }
     setRedemptionRequests((items) => items.map((item) => item.id === request.id ? data : item));
+    notify(`Status pengajuan emas berhasil diperbarui menjadi ${status}.`, "success");
   };
   return (
     <AdminShell page="admin_gold" go={go} currentUser={currentUser} newOrdersCount={newOrdersCount} newSembakoCount={newSembakoCount}>
@@ -1750,6 +1859,7 @@ function AdminGoldBatches({ go, currentUser, redemptionRequests, setRedemptionRe
         <p>Kelola tahapan pengajuan konversi emas Pegadaian. Saldo ditahan saat pengajuan dan dikembalikan jika permintaan ditolak.</p>
       </div>
 
+      <TablePagination query={query} setQuery={setQuery} page={currentPage} pageCount={pageCount} total={matchingRequests.length} onPageChange={setCurrentPage} placeholder="Cari nama, status, atau alasan..." showPagination={false} />
       <div className="table-wrap" style={{ background: "white" }}>
         <table>
           <thead>
@@ -1762,7 +1872,7 @@ function AdminGoldBatches({ go, currentUser, redemptionRequests, setRedemptionRe
             </tr>
           </thead>
           <tbody>
-            {goldRequests.map((request) => (
+            {visibleRequests.map((request) => (
               <tr key={request.id}>
                 <td>{request.user_name}</td>
                 <td><b style={{ color: "var(--amber)" }}>{rupiah(Number(request.amount))}</b></td>
@@ -1778,10 +1888,11 @@ function AdminGoldBatches({ go, currentUser, redemptionRequests, setRedemptionRe
                 </td>
               </tr>
             ))}
-            {goldRequests.length === 0 && <tr><td colSpan="5" style={{ textAlign: "center", padding: "24px" }}>Belum ada pengajuan emas.</td></tr>}
+            {visibleRequests.length === 0 && <tr><td colSpan="5" style={{ textAlign: "center", padding: "24px" }}>{goldRequests.length ? "Tidak ada data yang cocok." : "Belum ada pengajuan emas."}</td></tr>}
           </tbody>
         </table>
       </div>
+      <TablePagination query={query} setQuery={setQuery} page={currentPage} pageCount={pageCount} total={matchingRequests.length} onPageChange={setCurrentPage} showSearch={false} />
 
       <div style={{ marginTop: "20px" }}>
         <Button variant="secondary" onClick={() => window.print()}>
@@ -1947,6 +2058,8 @@ function AdminInventory({ go, currentUser, depositHistory, outflows, setOutflows
   const [weight, setWeight] = useState("");
   const [details, setDetails] = useState("");
   const [movementDate, setMovementDate] = useState(dateInputValue(new Date()));
+  const [query, setQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const inventory = useMemo(() => {
     const types = [...new Set([...depositHistory.map((record) => record.waste_type), ...outflows.map((record) => record.waste_type)])];
     return types.map((type) => ({
@@ -1955,6 +2068,9 @@ function AdminInventory({ go, currentUser, depositHistory, outflows, setOutflows
       outgoing: outflows.filter((record) => record.waste_type === type).reduce((sum, record) => sum + Number(record.weight || 0), 0)
     }));
   }, [depositHistory, outflows]);
+  const matchingInventory = inventory.filter((item) => item.type.toLowerCase().includes(query.toLowerCase()));
+  const pageCount = Math.max(1, Math.ceil(matchingInventory.length / 10));
+  const visibleInventory = matchingInventory.slice((currentPage - 1) * 10, currentPage * 10);
   const handleOutflow = async (event) => {
     event.preventDefault();
     const record = { waste_type: wasteType, weight: Number(weight), movement_date: movementDate, details: details.trim() };
@@ -1971,12 +2087,14 @@ function AdminInventory({ go, currentUser, depositHistory, outflows, setOutflows
   return (
     <AdminShell page="admin_inventory" go={go} currentUser={currentUser} newOrdersCount={newOrdersCount} newSembakoCount={newSembakoCount}>
       <div className="section-head" style={{ textAlign: "left", marginBottom: "20px" }}><h2>Rekap Stok Bank Sampah</h2><p>Stok tersedia dihitung dari setoran tercatat dikurangi pengeluaran yang dicatat sejak sistem ini digunakan.</p></div>
+      <TablePagination query={query} setQuery={setQuery} page={currentPage} pageCount={pageCount} total={matchingInventory.length} onPageChange={setCurrentPage} placeholder="Cari jenis sampah..." showPagination={false} />
       <div className="table-wrap" style={{ background: "white", marginBottom: "24px" }}>
         <table><thead><tr><th>Jenis sampah</th><th>Masuk (kg)</th><th>Keluar (kg)</th><th>Estimasi tersedia (kg)</th></tr></thead><tbody>
-          {inventory.map((item) => <tr key={item.type}><td>{item.type}</td><td>{item.incoming.toFixed(2)}</td><td>{item.outgoing.toFixed(2)}</td><td><b>{Math.max(0, item.incoming - item.outgoing).toFixed(2)}</b></td></tr>)}
-          {inventory.length === 0 && <tr><td colSpan="4">Belum ada data setoran.</td></tr>}
+          {visibleInventory.map((item) => <tr key={item.type}><td>{item.type}</td><td>{item.incoming.toFixed(2)}</td><td>{item.outgoing.toFixed(2)}</td><td><b>{Math.max(0, item.incoming - item.outgoing).toFixed(2)}</b></td></tr>)}
+          {visibleInventory.length === 0 && <tr><td colSpan="4">{inventory.length ? "Tidak ada jenis sampah yang cocok." : "Belum ada data setoran."}</td></tr>}
         </tbody></table>
       </div>
+      <TablePagination query={query} setQuery={setQuery} page={currentPage} pageCount={pageCount} total={matchingInventory.length} onPageChange={setCurrentPage} showSearch={false} />
       <div className="form-panel" style={{ background: "white", padding: "24px", maxWidth: "680px" }}>
         <h3 style={{ color: "var(--forest)", marginBottom: "16px" }}>Catat sampah keluar/terjual</h3>
         <form onSubmit={handleOutflow} style={{ display: "grid", gap: "12px" }}>
@@ -1991,12 +2109,15 @@ function AdminInventory({ go, currentUser, depositHistory, outflows, setOutflows
   );
 }
 
-function AdminSales({ go, currentUser, orders, newOrdersCount, newSembakoCount }) {
+function AdminSales({ go, currentUser, orders, activityLogs, newOrdersCount, newSembakoCount }) {
   const today = dateInputValue(new Date());
   const month = today.slice(0, 7);
   const completed = orders.filter((order) => order.status === "Selesai");
   const todaySales = completed.filter((order) => (order.completed_at || order.created_at)?.slice(0, 10) === today);
   const monthSales = completed.filter((order) => (order.completed_at || order.created_at)?.startsWith(month));
+  const [query, setQuery] = useState("");
+  const [entityFilter, setEntityFilter] = useState("Semua transaksi");
+  const [currentPage, setCurrentPage] = useState(1);
   const productTotals = completed.reduce((groups, order) => {
     const key = order.product_name || "Produk tidak diketahui";
     groups[key] = groups[key] || { quantity: 0, amount: 0 };
@@ -2004,23 +2125,90 @@ function AdminSales({ go, currentUser, orders, newOrdersCount, newSembakoCount }
     groups[key].amount += Number(order.total_amount || 0);
     return groups;
   }, {});
+  const matchingLogs = activityLogs.filter((log) => {
+    const matchesQuery = `${log.actor_name} ${log.actor_role} ${log.summary} ${log.entity_type} ${log.action}`.toLowerCase().includes(query.toLowerCase());
+    return matchesQuery && (entityFilter === "Semua transaksi" || log.entity_type === entityFilter);
+  });
+  const pageCount = Math.max(1, Math.ceil(matchingLogs.length / 10));
+  const visibleLogs = matchingLogs.slice((currentPage - 1) * 10, currentPage * 10);
   return (
     <AdminShell page="admin_sales" go={go} currentUser={currentUser} newOrdersCount={newOrdersCount} newSembakoCount={newSembakoCount}>
-      <div className="section-head" style={{ textAlign: "left", marginBottom: "20px" }}><h2>Rekap Penjualan</h2><p>Pemasukan dihitung dari pesanan yang telah ditandai selesai. Pesanan lama tanpa harga tersimpan tidak dihitung ke omzet.</p></div>
+      <div className="section-head" style={{ textAlign: "left", marginBottom: "20px" }}><h2>Rekap Penjualan & Aktivitas</h2><p>Riwayat transaksi dan perubahan status dari pengurus maupun warga, termasuk pesanan yang ditolak atau dibatalkan.</p></div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: "16px", marginBottom: "22px" }}>
         <div className="form-panel" style={{ background: "white", padding: "22px" }}><span className="kicker">Hari ini</span><h3 style={{ marginTop: "10px", color: "var(--forest)" }}>{rupiah(todaySales.reduce((sum, order) => sum + Number(order.total_amount || 0), 0))}</h3><small>{todaySales.length} pesanan selesai</small></div>
         <div className="form-panel" style={{ background: "white", padding: "22px" }}><span className="kicker">Bulan ini</span><h3 style={{ marginTop: "10px", color: "var(--forest)" }}>{rupiah(monthSales.reduce((sum, order) => sum + Number(order.total_amount || 0), 0))}</h3><small>{monthSales.length} pesanan selesai</small></div>
       </div>
-      <div className="table-wrap" style={{ background: "white" }}><table><thead><tr><th>Produk</th><th>Jumlah terjual</th><th>Pemasukan tercatat</th></tr></thead><tbody>
-        {Object.entries(productTotals).map(([name, total]) => <tr key={name}><td>{name}</td><td>{total.quantity}</td><td>{rupiah(total.amount)}</td></tr>)}
-        {Object.keys(productTotals).length === 0 && <tr><td colSpan="3">Belum ada pesanan selesai.</td></tr>}
-      </tbody></table></div>
+      {Object.keys(productTotals).length > 0 && (
+        <div className="table-wrap" style={{ background: "white", marginBottom: "22px" }}>
+          <table><thead><tr><th>Produk terjual</th><th>Jumlah</th><th>Pemasukan tercatat</th></tr></thead><tbody>
+            {Object.entries(productTotals).map(([name, total]) => <tr key={name}><td>{name}</td><td>{total.quantity}</td><td>{rupiah(total.amount)}</td></tr>)}
+          </tbody></table>
+        </div>
+      )}
+      <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "14px" }}>
+        <input type="search" value={query} onChange={(event) => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Cari nama, transaksi, atau aktivitas..." aria-label="Cari log transaksi" style={{ flex: "1 1 260px", padding: "10px 12px", border: "1px solid var(--line)", borderRadius: "8px" }} />
+        <select value={entityFilter} onChange={(event) => { setEntityFilter(event.target.value); setCurrentPage(1); }} aria-label="Filter jenis transaksi" style={{ padding: "10px 12px", border: "1px solid var(--line)", borderRadius: "8px", background: "white" }}>
+          <option>Semua transaksi</option>
+          <option value="orders">Pesanan produk</option>
+          <option value="deposits">Setoran sampah</option>
+          <option value="redemption_requests">Penukaran saldo</option>
+          <option value="bank_accounts">Perubahan akun</option>
+          <option value="waste_outflows">Stok sampah keluar</option>
+        </select>
+      </div>
+      <div className="table-wrap" style={{ background: "white" }}>
+        <table>
+          <thead><tr><th>Waktu</th><th>Pelaku</th><th>Peran</th><th>Jenis transaksi</th><th>Aktivitas</th><th>Nilai</th></tr></thead>
+          <tbody>
+            {visibleLogs.map((log) => (
+              <tr key={log.id}>
+                <td>{new Date(log.created_at).toLocaleString("id-ID")}</td>
+                <td>{log.actor_name}</td>
+                <td>{log.actor_role}</td>
+                <td>{log.entity_type === "orders" ? "Pesanan" : log.entity_type === "deposits" ? "Setoran" : log.entity_type === "redemption_requests" ? "Penukaran saldo" : log.entity_type === "bank_accounts" ? "Akun warga" : "Stok sampah"}</td>
+                <td>{log.summary}</td>
+                <td>{Number(log.amount) ? rupiah(log.amount) : "—"}</td>
+              </tr>
+            ))}
+            {visibleLogs.length === 0 && <tr><td colSpan="6" style={{ textAlign: "center", padding: "24px", color: "var(--muted)" }}>Belum ada aktivitas pada filter ini. Pastikan migration log aktivitas sudah dijalankan.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+      <TablePagination query={query} setQuery={setQuery} page={currentPage} pageCount={pageCount} total={matchingLogs.length} onPageChange={setCurrentPage} showSearch={false} />
     </AdminShell>
   );
 }
 
 function AdminAccounts({ go, currentUser, accounts, setAccounts, newOrdersCount, newSembakoCount }) {
   const { notify } = useAppNotifications();
+  const [query, setQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editAccount, setEditAccount] = useState(null);
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const residents = accounts.filter((account) => account.role === "resident");
+  const matchingAccounts = residents.filter((account) => `${account.full_name} ${account.email} ${account.phone} ${account.status}`.toLowerCase().includes(query.toLowerCase()));
+  const pageCount = Math.max(1, Math.ceil(matchingAccounts.length / 10));
+  const visibleAccounts = matchingAccounts.slice((currentPage - 1) * 10, currentPage * 10);
+
+  const openAddAccount = () => {
+    setEditAccount(null);
+    setFullName("");
+    setEmail("");
+    setPhone("");
+    setIsModalOpen(true);
+  };
+
+  const openEditAccount = (account) => {
+    setEditAccount(account);
+    setFullName(account.full_name || "");
+    setEmail(account.email || "");
+    setPhone(account.phone || "");
+    setIsModalOpen(true);
+  };
+
   const updateAccount = async (account, status) => {
     const { data, error } = await supabase.from("bank_accounts").update({ status }).eq("user_id", account.user_id).select().single();
     if (error) {
@@ -2028,6 +2216,7 @@ function AdminAccounts({ go, currentUser, accounts, setAccounts, newOrdersCount,
       return;
     }
     setAccounts((items) => items.map((item) => item.user_id === account.user_id ? data : item));
+    notify(`Akun warga berhasil ${status === "active" ? "diaktifkan" : "ditolak"}.`, "success");
     if (status === "active") {
       const { error: linkError } = await supabase.from("redemption_requests")
         .update({ user_id: account.user_id, phone: account.phone })
@@ -2038,13 +2227,80 @@ function AdminAccounts({ go, currentUser, accounts, setAccounts, newOrdersCount,
       }
     }
   };
+
+  const saveAccount = async (event) => {
+    event.preventDefault();
+    const trimmedName = fullName.trim();
+    const trimmedPhone = phone.trim();
+    const trimmedEmail = email.trim().toLowerCase();
+    if (residents.some((account) => account.user_id !== editAccount?.user_id && account.full_name.trim().toLowerCase() === trimmedName.toLowerCase() && account.status === "active")) {
+      notify("Nama tersebut sudah digunakan akun warga aktif.", "error");
+      return;
+    }
+
+    if (editAccount) {
+      const { data, error } = await supabase.from("bank_accounts")
+        .update({ full_name: trimmedName, phone: trimmedPhone })
+        .eq("user_id", editAccount.user_id).select().single();
+      if (error) {
+        notify(`Gagal memperbarui akun warga: ${error.message}`, "error");
+        return;
+      }
+      setAccounts((items) => items.map((item) => item.user_id === editAccount.user_id ? data : item));
+      notify("Data akun warga berhasil diperbarui.", "success");
+      setIsModalOpen(false);
+      return;
+    }
+
+    if (residents.some((account) => account.email.toLowerCase() === trimmedEmail)) {
+      notify("Email tersebut sudah terdaftar sebagai akun warga.", "error");
+      return;
+    }
+    const { error } = await supabase.auth.signInWithOtp({
+      email: trimmedEmail,
+      options: { data: { full_name: trimmedName, phone: trimmedPhone }, shouldCreateUser: true }
+    });
+    if (error) {
+      notify(`Gagal mengirim tautan pendaftaran warga: ${error.message}`, "error");
+      return;
+    }
+    notify("Tautan verifikasi telah dikirim. Akun warga akan muncul setelah pendaftaran email diproses.", "success");
+    setIsModalOpen(false);
+  };
+
   return (
     <AdminShell page="admin_accounts" go={go} currentUser={currentUser} newOrdersCount={newOrdersCount} newSembakoCount={newSembakoCount}>
-      <div className="section-head" style={{ textAlign: "left", marginBottom: "20px" }}><h2>Akun Warga</h2><p>Akun warga baru otomatis aktif setelah pendaftaran. Akun lama yang masih menunggu persetujuan tetap dapat dikelola di sini.</p></div>
+      <div className="section-head" style={{ textAlign: "left", marginBottom: "20px" }}><h2>Akun Warga</h2><p>Tambah akun melalui verifikasi email, ubah nama dan WhatsApp, serta kelola akun yang menunggu pemeriksaan.</p></div>
+      <div style={{ textAlign: "right", marginBottom: "18px" }}><Button onClick={openAddAccount}>+ Tambah akun warga</Button></div>
+      <TablePagination query={query} setQuery={setQuery} page={currentPage} pageCount={pageCount} total={matchingAccounts.length} onPageChange={setCurrentPage} placeholder="Cari nama, email, WhatsApp, atau status..." showPagination={false} />
       <div className="table-wrap" style={{ background: "white" }}><table><thead><tr><th>Nama</th><th>Email</th><th>WhatsApp</th><th>Status</th><th>Aksi</th></tr></thead><tbody>
-        {accounts.filter((account) => account.role === "resident").map((account) => <tr key={account.user_id}><td>{account.full_name}</td><td>{account.email}</td><td>{account.phone}</td><td>{account.status}</td><td>{account.status === "pending" && <><Button onClick={() => updateAccount(account, "active")} style={{ padding: "7px 12px", marginRight: "6px" }}>Setujui</Button><Button variant="secondary" onClick={() => updateAccount(account, "rejected")} style={{ padding: "7px 12px" }}>Tolak</Button></>}</td></tr>)}
-        {accounts.filter((account) => account.role === "resident").length === 0 && <tr><td colSpan="5">Belum ada akun warga.</td></tr>}
+        {visibleAccounts.map((account) => <tr key={account.user_id}>
+          <td>{account.full_name}</td><td>{account.email}</td><td>{account.phone}</td><td>{account.status}</td>
+          <td style={{ whiteSpace: "nowrap" }}>
+            <Button variant="secondary" onClick={() => openEditAccount(account)} style={{ padding: "7px 12px", marginRight: "6px" }}>Edit</Button>
+            {account.status === "pending" && <><Button onClick={() => updateAccount(account, "active")} style={{ padding: "7px 12px", marginRight: "6px" }}>Setujui</Button><Button variant="secondary" onClick={() => updateAccount(account, "rejected")} style={{ padding: "7px 12px" }}>Tolak</Button></>}
+          </td>
+        </tr>)}
+        {visibleAccounts.length === 0 && <tr><td colSpan="5" style={{ textAlign: "center", padding: "24px" }}>{residents.length ? "Tidak ada akun yang cocok." : "Belum ada akun warga."}</td></tr>}
       </tbody></table></div>
+      <TablePagination query={query} setQuery={setQuery} page={currentPage} pageCount={pageCount} total={matchingAccounts.length} onPageChange={setCurrentPage} showSearch={false} />
+      {isModalOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "grid", placeItems: "center", zIndex: 10000, padding: "20px" }}>
+          <div className="form-panel" style={{ maxWidth: "460px", width: "100%", padding: "28px", background: "white" }}>
+            <h3 style={{ fontSize: "20px", color: "var(--forest)", marginBottom: "8px" }}>{editAccount ? "Edit data akun warga" : "Tambah akun warga"}</h3>
+            <p style={{ fontSize: "13px", color: "var(--muted)", marginBottom: "16px" }}>{editAccount ? "Email akun tidak diubah di sini." : "Tautan verifikasi akan dikirim ke email warga. Jangan meminta atau menyimpan kata sandi warga."}</p>
+            <form onSubmit={saveAccount} style={{ display: "grid", gap: "12px" }}>
+              <label>Nama lengkap<input required value={fullName} onChange={(event) => setFullName(event.target.value)} style={{ display: "block", width: "100%", padding: "10px", marginTop: "5px", border: "1px solid var(--line)", borderRadius: "8px" }} /></label>
+              <label>Email<input required type="email" disabled={Boolean(editAccount)} value={email} onChange={(event) => setEmail(event.target.value)} style={{ display: "block", width: "100%", padding: "10px", marginTop: "5px", border: "1px solid var(--line)", borderRadius: "8px" }} /></label>
+              <label>Nomor WhatsApp<input type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} style={{ display: "block", width: "100%", padding: "10px", marginTop: "5px", border: "1px solid var(--line)", borderRadius: "8px" }} /></label>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "8px" }}>
+                <Button variant="secondary" onClick={() => setIsModalOpen(false)}>Batal</Button>
+                <Button type="submit">{editAccount ? "Simpan perubahan" : "Kirim verifikasi"}</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </AdminShell>
   );
 }
@@ -2109,6 +2365,7 @@ export default function App() {
   const [redemptionRequests, setRedemptionRequests] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [outflows, setOutflows] = useState([]);
+  const [activityLogs, setActivityLogs] = useState([]);
   const [settings, setSettings] = useState(defaultBankSettings);
   const [residentBalance, setResidentBalance] = useState(0);
   const [publicWasteTotal, setPublicWasteTotal] = useState(0);
@@ -2174,15 +2431,17 @@ export default function App() {
           supabase.from("orders").select("*").order("created_at", { ascending: false }),
           supabase.from("redemption_requests").select("*").order("created_at", { ascending: false }),
           supabase.from("bank_accounts").select("*").order("created_at", { ascending: false }),
-          supabase.from("waste_outflows").select("*").order("movement_date", { ascending: false })
+          supabase.from("waste_outflows").select("*").order("movement_date", { ascending: false }),
+          supabase.from("activity_logs").select("*").order("created_at", { ascending: false })
         ]);
-        const [depositsResult, ordersResult, redemptionResult, accountsResult, outflowResult] = adminResults;
+        const [depositsResult, ordersResult, redemptionResult, accountsResult, outflowResult, activityResult] = adminResults;
         [
           ["Riwayat setoran", depositsResult, setDepositHistory],
           ["Pesanan", ordersResult, setOrders],
           ["Penukaran saldo", redemptionResult, setRedemptionRequests],
           ["Akun warga", accountsResult, setAccounts],
-          ["Stok sampah keluar", outflowResult, setOutflows]
+          ["Stok sampah keluar", outflowResult, setOutflows],
+          ["Log aktivitas transaksi", activityResult, setActivityLogs]
         ].forEach(([label, result, setter]) => {
           if (result.error) errors.push(`${label}: ${result.error.message}`);
           else setter(result.data || []);
@@ -2421,7 +2680,7 @@ export default function App() {
   } else if (page === "admin_inventory") {
     content = <AdminInventory go={go} currentUser={currentUser} depositHistory={depositHistory} outflows={outflows} setOutflows={setOutflows} newOrdersCount={orders.filter((order) => order.status === "Baru").length} newSembakoCount={redemptionRequests.filter((request) => request.status === "Menunggu Konfirmasi").length} />;
   } else if (page === "admin_sales") {
-    content = <AdminSales go={go} currentUser={currentUser} orders={orders} newOrdersCount={orders.filter((order) => order.status === "Baru").length} newSembakoCount={redemptionRequests.filter((request) => request.status === "Menunggu Konfirmasi").length} />;
+    content = <AdminSales go={go} currentUser={currentUser} orders={orders} activityLogs={activityLogs} newOrdersCount={orders.filter((order) => order.status === "Baru").length} newSembakoCount={redemptionRequests.filter((request) => request.status === "Menunggu Konfirmasi").length} />;
   } else if (page === "admin_orders") {
     content = <AdminOrders go={go} currentUser={currentUser} orders={orders} setOrders={setOrders} products={products} setProducts={setProducts} newOrdersCount={orders.filter((order) => order.status === "Baru").length} newSembakoCount={redemptionRequests.filter((request) => request.status === "Menunggu Konfirmasi").length} />;
   } else if (page === "admin_sembako") {
