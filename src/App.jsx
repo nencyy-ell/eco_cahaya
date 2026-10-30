@@ -824,9 +824,10 @@ function Products({ go, currentUser, logout, products, onNewOrder, settings }) {
 }
 
 function Resident({ go, currentUser, logout, depositHistory, redemptionRequests, residentBalance, onApplyRedemption, settings }) {
-  const { notify } = useAppNotifications();
   const [depositQuery, setDepositQuery] = useState("");
   const [depositPage, setDepositPage] = useState(1);
+  const [submissionStatus, setSubmissionStatus] = useState(null);
+  const [submittingType, setSubmittingType] = useState(null);
   const currentResidentName = currentUser?.name || "";
   const userDeposits = depositHistory.filter(
     (d) => d.user_name.toLowerCase() === currentResidentName.toLowerCase()
@@ -852,10 +853,15 @@ function Resident({ go, currentUser, logout, depositHistory, redemptionRequests,
   const handleApplyGold = async (e) => {
     e.preventDefault();
     if (Number(goldAmount) < Number(settings.gold_minimum) || Number(goldAmount) > totalUserBalance) {
-      notify("Nominal emas harus memenuhi batas minimal dan tidak boleh melebihi saldo tersedia.", "error");
+      setSubmissionStatus({
+        type: "error",
+        message: "Nominal emas harus memenuhi batas minimal dan tidak boleh melebihi saldo tersedia."
+      });
       return;
     }
 
+    setSubmittingType("gold");
+    setSubmissionStatus({ type: "pending", message: "Pengajuan emas sedang dikirim. Mohon tunggu." });
     try {
       await onApplyRedemption({
         redemption_type: "gold",
@@ -863,19 +869,33 @@ function Resident({ go, currentUser, logout, depositHistory, redemptionRequests,
         item_details: "Konversi tabungan emas Pegadaian",
         quantity: 1
       });
-      notify("Pengajuan emas terkirim. Saldo sudah ditahan dan status dapat dipantau di bawah.", "success");
+      setSubmissionStatus({
+        type: "success",
+        message: "Pengajuan emas berhasil dikirim. Saldo sudah ditahan dan status dapat dipantau di bawah."
+      });
     } catch (error) {
-      notify(`Gagal mengajukan emas: ${error.message}`, "error");
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setSubmissionStatus({
+        type: "error",
+        message: `Pengajuan emas gagal dikirim: ${errorMessage}. Periksa koneksi dan status pengajuan sebelum mencoba lagi.`
+      });
+    } finally {
+      setSubmittingType(null);
     }
   };
 
   const handleApplySembako = async (e) => {
     e.preventDefault();
     if (Number(sembakoAmount) <= 0 || Number(sembakoAmount) > totalUserBalance || !sembakoDetails.trim()) {
-      notify("Isi kebutuhan sembako dan nominal yang tidak melebihi saldo tersedia.", "error");
+      setSubmissionStatus({
+        type: "error",
+        message: "Isi kebutuhan sembako dan nominal yang tidak melebihi saldo tersedia."
+      });
       return;
     }
 
+    setSubmittingType("sembako");
+    setSubmissionStatus({ type: "pending", message: "Pengajuan sembako sedang dikirim. Mohon tunggu." });
     try {
       await onApplyRedemption({
         redemption_type: "sembako",
@@ -885,9 +905,18 @@ function Resident({ go, currentUser, logout, depositHistory, redemptionRequests,
       });
       setSembakoAmount("");
       setSembakoDetails("");
-      notify("Pengajuan sembako terkirim. Saldo sudah ditahan sampai pengajuan disetujui atau ditolak.", "success");
+      setSubmissionStatus({
+        type: "success",
+        message: "Pengajuan sembako berhasil dikirim. Saldo sudah ditahan sampai pengajuan disetujui atau ditolak."
+      });
     } catch (error) {
-      notify(`Gagal mengajukan sembako: ${error.message}`, "error");
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setSubmissionStatus({
+        type: "error",
+        message: `Pengajuan sembako gagal dikirim: ${errorMessage}. Periksa koneksi dan status pengajuan sebelum mencoba lagi.`
+      });
+    } finally {
+      setSubmittingType(null);
     }
   };
 
@@ -912,6 +941,25 @@ function Resident({ go, currentUser, logout, depositHistory, redemptionRequests,
           </div>
         </div>
 
+        {submissionStatus && (
+          <div
+            role={submissionStatus.type === "error" ? "alert" : "status"}
+            aria-live={submissionStatus.type === "error" ? "assertive" : "polite"}
+            style={{
+              marginBottom: "20px",
+              padding: "14px 16px",
+              borderRadius: "10px",
+              background: submissionStatus.type === "error" ? "#fff5f5" : submissionStatus.type === "success" ? "#eef7f0" : "#ebf8ff",
+              color: submissionStatus.type === "error" ? "#9b2c2c" : submissionStatus.type === "success" ? "var(--forest)" : "#2b6cb0",
+              border: `1px solid ${submissionStatus.type === "error" ? "#feb2b2" : submissionStatus.type === "success" ? "#c6f6d5" : "#bee3f8"}`,
+              fontSize: "13px",
+              lineHeight: 1.5
+            }}
+          >
+            {submissionStatus.message}
+          </div>
+        )}
+
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "24px" }}>
           <div className="form-panel" style={{ padding: "24px", background: "white", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
             <div>
@@ -920,8 +968,8 @@ function Resident({ go, currentUser, logout, depositHistory, redemptionRequests,
             </div>
             <form onSubmit={handleApplyGold}>
               <label style={{ fontSize: "12px", fontWeight: "600", display: "block", marginBottom: "6px" }}>Nominal penukaran</label>
-              <input type="number" min={settings.gold_minimum} step={settings.gold_increment} max={totalUserBalance} value={goldAmount} onChange={(e) => setGoldAmount(e.target.value)} style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "8px", border: "1px solid var(--line)" }} />
-              <Button type="submit" variant="primary" disabled={totalUserBalance < Number(settings.gold_minimum)} style={{ width: "100%", padding: "12px" }}>Ajukan Tukar Emas</Button>
+              <input type="number" min={settings.gold_minimum} step={settings.gold_increment} max={totalUserBalance} value={goldAmount} disabled={Boolean(submittingType)} onChange={(e) => setGoldAmount(e.target.value)} style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "8px", border: "1px solid var(--line)" }} />
+              <Button type="submit" variant="primary" disabled={Boolean(submittingType) || totalUserBalance < Number(settings.gold_minimum)} style={{ width: "100%", padding: "12px" }}>{submittingType === "gold" ? "Mengirim pengajuan..." : "Ajukan Tukar Emas"}</Button>
             </form>
           </div>
 
@@ -932,10 +980,10 @@ function Resident({ go, currentUser, logout, depositHistory, redemptionRequests,
             </div>
             <form onSubmit={handleApplySembako}>
               <label style={{ fontSize: "12px", fontWeight: "600", display: "block", marginBottom: "6px" }}>Barang yang diminta</label>
-              <input type="text" required value={sembakoDetails} onChange={(e) => setSembakoDetails(e.target.value)} placeholder="Contoh: beras 5 kg, minyak 1 liter" style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "8px", border: "1px solid var(--line)" }} />
+              <input type="text" required value={sembakoDetails} disabled={Boolean(submittingType)} onChange={(e) => setSembakoDetails(e.target.value)} placeholder="Contoh: beras 5 kg, minyak 1 liter" style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "8px", border: "1px solid var(--line)" }} />
               <label style={{ fontSize: "12px", fontWeight: "600", display: "block", marginBottom: "6px" }}>Nominal saldo yang digunakan</label>
-              <input type="number" min="1" max={totalUserBalance} required value={sembakoAmount} onChange={(e) => setSembakoAmount(e.target.value)} style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "8px", border: "1px solid var(--line)" }} />
-              <Button type="submit" variant="secondary" disabled={totalUserBalance <= 0} style={{ width: "100%", padding: "12px", borderColor: "var(--forest)", color: "var(--forest)" }}>Ajukan Penukaran Sembako</Button>
+              <input type="number" min="1" max={totalUserBalance} required value={sembakoAmount} disabled={Boolean(submittingType)} onChange={(e) => setSembakoAmount(e.target.value)} style={{ width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "8px", border: "1px solid var(--line)" }} />
+              <Button type="submit" variant="secondary" disabled={Boolean(submittingType) || totalUserBalance <= 0} style={{ width: "100%", padding: "12px", borderColor: "var(--forest)", color: "var(--forest)" }}>{submittingType === "sembako" ? "Mengirim pengajuan..." : "Ajukan Penukaran Sembako"}</Button>
             </form>
           </div>
         </div>
