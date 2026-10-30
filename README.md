@@ -1,56 +1,89 @@
+
 # ECO-CAHAYA
+**ECO-CAHAYA** adalah platform web interaktif untuk bank sampah yang mengintegrasikan pencatatan timbangan sampah berbasis insentif sirkular, kalkulator estimasi emisi terhindarkan (*avoided emissions*), pengelolaan batch tabungan emas Pegadaian, serta etalase digital produk kriya daur ulang lokal.
 
-Aplikasi pengelolaan Bank Sampah Cahaya Kerja berbasis React, Vite, dan Supabase.
+---
 
-## Menjalankan aplikasi
+## Fitur Utama
 
-```sh
+1. **Pencatatan Setoran & Kalkulator Emisi Otomatis**: Membantu pengurus mencatat berat dan jenis sampah nasabah, lalu mengonversinya secara otomatis menjadi nilai saldo rupiah dan estimasi emisi terhindarkan.
+
+
+2. **Green Incentive Gamification & Tier Badge**: Sistem insentif berbasis level keaktifan (*tier badge*) untuk memotivasi warga aktif memilah sampah.
+
+
+3. **Smart-Batch Voucher Tabungan Emas Pegadaian**: Modul administrasi bagi pengurus untuk merekapitulasi pengajuan konversi tabungan emas secara kolektif (kelipatan Rp 50.000) menuju Pegadaian Situbondo.
+
+
+4. **Generator Laporan Adipura & DLH**: Fitur rekapitulasi data setoran bulanan siap cetak yang disesuaikan dengan format evaluasi Dinas Lingkungan Hidup.
+
+
+5. **Etalase Digital Kriya Lokal**: Katalog produk daur ulang (seperti Tas SEDAJA, Sabun Jelantah, dan *Eco-Enzyme*) yang terhubung langsung dengan pengurus via WhatsApp.
+
+
+
+---
+
+## Teknologi yang Digunakan
+
+* **Frontend**: React.js (Vite), Tailwind CSS, React Router DOM, Lucide React
+
+
+* **Backend & Database**: Supabase Relational Database (PostgreSQL) dengan Row Level Security (RLS)
+
+
+* **Hosting & Deployment**: Netlify & GitHub
+
+---
+
+## Menjalankan Proyek Secara Lokal
+
+Ikuti langkah-langkah berikut untuk menjalankan kode proyek di komputer Anda:
+
+1. **Clone repository ini:**
+```bash
+git clone https://github.com/nencyy-ell/eco_cahaya.git
+cd eco-cahaya
+
+```
+
+
+2. **Installdependencies:**
+```bash
 npm install
+
+```
+
+
+3. **Konfigurasi Environment Variable:**
+Buat file `.env` di root direktori proyek, lalu masukkan konfigurasi Supabase Anda:
+```env
+VITE_SUPABASE_URL=URL_SUPABASE_ANDA
+VITE_SUPABASE_ANON_KEY=ANON_KEY_SUPABASE_ANDA
+
+```
+
+
+4. **Jalankan server lokal:**
+```bash
 npm run dev
+
 ```
 
-## Menyiapkan database Supabase
 
-Sebelum menggunakan versi aplikasi ini, jalankan migration berikut satu kali dan berurutan melalui **Supabase Dashboard → SQL Editor**:
+5. Buka tautan lokal yang muncul di terminal (biasanya `http://localhost:5173`) melalui browser Anda.
 
-1. `supabase/migrations/202610280001_bank_operations.sql`
-2. `supabase/migrations/202610290001_activate_resident_accounts.sql`
-3. `supabase/migrations/202610290002_transaction_activity_log.sql`
+---
 
-Migration menambahkan autentikasi akun warga, saldo dan permintaan penukaran, stok produk/pesanan, pergerakan stok sampah, pengaturan informasi publik, dan kebijakan Row Level Security. Migration aktivitas mencatat setoran, pesanan beserta perubahan statusnya, penukaran, perubahan akun, dan stok sampah keluar ke `activity_logs` untuk rekap pengurus. Log hanya mencakup aktivitas setelah migration tersebut dijalankan; riwayat lama tidak dapat direkonstruksi. Penghapusan pesanan juga dinonaktifkan agar catatan transaksi tetap tersedia. Migration mengganti kebijakan RLS pada `products_db`, `orders`, `prices`, `deposits`, `gold_batches`, dan `sembako_requests`; dua tabel penukaran lama dibuat tidak tersedia langsung setelah datanya disalin ke tabel baru. Cadangkan database dan uji di project staging terlebih dahulu. Migration belum dijalankan ke project Supabase live oleh aplikasi ini.
+## Struktur Migrasi Database
 
-Migration mengasumsikan struktur lama berikut sudah tersedia: `products_db` dengan kolom `id` dan `title`; `orders` dengan `id`, `product_name`, `buyer_name`, `buyer_phone`, `shipping_address`, dan `status`; `deposits` dengan `user_name`, `waste_type`, `weight`, `nominal`, dan `deposit_date`; serta `gold_batches` dan `sembako_requests` dengan `id`, `user_name`, `amount`, dan `status`. Tipe `orders.product_id` baru disesuaikan otomatis dengan tipe `products_db.id`; jika kolom itu sudah ada, pastikan tipenya cocok. Pastikan juga nama/tipe kolom lain sesuai sebelum menjalankan migration.
+Skrip SQL untuk migrasi basis data dan fungsi kustom (termasuk pemicu akun warga dan manajemen stok pesanan) telah disediakan di dalam folder migrasi proyek, yaitu file `202610280001_bank_operations.sql` dan `202610290001_activate_resident_accounts.sql` yang dapat dieksekusi melalui **Supabase SQL Editor**.
 
-### Mengaktifkan akun pengurus pertama
+---
 
-1. Pastikan project Supabase di dashboard sama dengan project yang dipakai aplikasi (`gddiajhvpdvuqiljcasv`). Buat akun melalui **Supabase Dashboard → Authentication → Users → Add user** dengan email dan kata sandi yang akan dipakai untuk login. Pastikan akun dikonfirmasi/aktif; migration tidak membuat kredensial login.
-2. Jalankan SQL berikut melalui **SQL Editor** untuk membuat atau mengaktifkan baris akun pengurus. Ini juga menangani akun Auth yang sudah ada sebelum migration dipasang:
+## Tautan Publik
 
-```sql
-insert into public.bank_accounts (user_id, email, full_name, phone, role, status)
-select id, lower(email), 'Nama Pengurus',
-       coalesce(raw_user_meta_data ->> 'phone', ''), 'admin', 'active'
-from auth.users
-where lower(email) = lower('EMAIL_PENGURUS')
-on conflict (user_id) do update
-set email = excluded.email,
-    full_name = excluded.full_name,
-    role = 'admin',
-    status = 'active';
-```
+* **Live Website**: [https://ecocahaya.netlify.app/](https://ecocahaya.netlify.app/)
 
-Ganti `EMAIL_PENGURUS` dan `Nama Pengurus` dengan data yang sesuai. Jika query tidak memasukkan atau memperbarui baris, pastikan akun dengan email tersebut ada di **Authentication → Users** pada project yang sama. Login memakai email dan kata sandi akun Auth tersebut. Jika muncul `Invalid login credentials`, periksa project/email dan gunakan reset kata sandi di Supabase Dashboard; perubahan `bank_accounts` tidak dapat memperbaiki kata sandi Auth. Jangan pernah menaruh kata sandi atau service-role key ke dalam source code.
 
-Akun warga dapat mendaftar melalui Portal Warga menggunakan email dan kata sandi. Pengurus juga dapat memulai penambahan akun dari menu **Akun Warga** dengan mengirim tautan verifikasi email; nama dan nomor WhatsApp dapat diperbarui pada menu tersebut. Nama yang sudah dipakai akun warga aktif tidak dapat digunakan oleh akun aktif lain. Pengurus tetap dapat memeriksa dan mengelola status akun dari halaman tersebut.
-
-### Verifikasi email dan lupa kata sandi
-
-Verifikasi email di Supabase Auth berbeda dari persetujuan akses aplikasi. Email yang sudah diverifikasi masih harus memiliki baris di `bank_accounts` dengan `status = 'active'` dan `role` yang sesuai (`admin` untuk pengurus; `resident` untuk warga). Akun admin yang dibuat sebelum migration perlu diprovisikan melalui SQL admin di atas.
-
-Form login admin maupun warga menyediakan **Lupa kata sandi?**. Tautan reset dikirim oleh Supabase Auth ke email; setelah tautan dibuka, pengguna membuat kata sandi baru di aplikasi. Agar tautan kembali ke aplikasi, atur **Supabase Dashboard → Authentication → URL Configuration**: jadikan URL aplikasi yang benar sebagai **Site URL**, lalu tambahkan origin lokal yang dipakai (misalnya `http://localhost:5175` atau `http://127.0.0.1:5175`) dan origin deployment ke **Redirect URLs**. Port harus cocok dengan alamat yang terlihat di browser. Periksa juga folder spam dan konfigurasi email Auth jika pesan reset/verifikasi tidak masuk.
-
-### Pengaturan operasional awal
-
-Nomor WhatsApp, alamat, jam layanan, ketentuan setoran, dan batas penukaran awal diisi sesuai informasi pengelola. Pengurus dapat memperbaruinya melalui menu **Info Bank Sampah**. Sebelum katalog menerima pesanan, isi nilai harga jual dan jumlah stok setiap produk melalui **Stok Produk**; stok awal migration bernilai nol karena jumlah barang saat ini belum diketahui.
-
-Stok sampah pada rekap merupakan estimasi setoran tercatat dikurangi pengeluaran yang dicatat. Untuk data stok fisik sebelum aplikasi digunakan, lakukan rekonsiliasi terlebih dahulu karena riwayat stok keluar lama tidak tersedia.
+* **Repositori GitHub**: [https://github.com/nencyy-ell/eco_cahaya.git](https://github.com/nencyy-ell/eco_cahaya.git)
